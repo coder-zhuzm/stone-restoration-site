@@ -27,6 +27,7 @@ export function createDistanceMaterial(
     farDistance: number;
     maxDissolve: number;
     transparent?: boolean;
+    opacity?: number;
   },
 ) {
   return new THREE.ShaderMaterial({
@@ -36,6 +37,7 @@ export function createDistanceMaterial(
       uNear: { value: options.nearDistance },
       uFar: { value: options.farDistance },
       uMaxDissolve: { value: options.maxDissolve },
+      uOpacity: { value: options.opacity ?? 1 },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -54,6 +56,7 @@ export function createDistanceMaterial(
       uniform float uNear;
       uniform float uFar;
       uniform float uMaxDissolve;
+      uniform float uOpacity;
       varying vec2 vUv;
       varying float vDistance;
 
@@ -62,7 +65,7 @@ export function createDistanceMaterial(
         if (texel.a < 0.025) discard;
         float dissolve = smoothstep(uNear, uFar, vDistance) * uMaxDissolve;
         vec3 color = mix(texel.rgb, uPaperColor, dissolve);
-        gl_FragColor = vec4(color, texel.a);
+        gl_FragColor = vec4(color, texel.a * uOpacity);
       }
     `,
     transparent: options.transparent ?? false,

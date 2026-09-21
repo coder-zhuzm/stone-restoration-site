@@ -10,6 +10,7 @@ import {
   createRepairMaterial,
   paperPassShader,
 } from './shaders';
+import { SCENE_CONFIG } from './sceneConfig';
 
 type RestorationState = 'broken' | 'restoring' | 'restored' | 'reversing';
 
@@ -26,12 +27,13 @@ const restoreButton = requireElement<HTMLButtonElement>('#restore');
 const buttonLabel = requireElement<HTMLSpanElement>('#button-label');
 const statusLabel = requireElement<HTMLParagraphElement>('#status');
 
-const paperColor = new THREE.Color('#eee6d2');
+const paperColor = new THREE.Color(SCENE_CONFIG.paperColor);
 const pointer = new THREE.Vector2();
 const pointerTarget = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
 const clock = new THREE.Clock();
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const focusPull = { value: 0 };
 
 let restorationState: RestorationState = 'broken';
 let statueMesh: THREE.Mesh | null = null;
@@ -64,7 +66,11 @@ function toggleRestoration() {
   setCopy(restorationState);
 
   const target = restoring ? 1 : 0;
-  const duration = reducedMotion ? 0.01 : restoring ? 2.45 : 1.35;
+  const duration = reducedMotion
+    ? 0.01
+    : restoring
+      ? SCENE_CONFIG.restoration.forwardDuration
+      : SCENE_CONFIG.restoration.reverseDuration;
 
   gsap.to(repairMaterial.uniforms.uProgress, {
     value: target,
@@ -79,6 +85,12 @@ function toggleRestoration() {
       restorationState = restoring ? 'restored' : 'broken';
       setCopy(restorationState);
     },
+  });
+
+  gsap.to(focusPull, {
+    value: restoring ? 1 : 0,
+    duration: reducedMotion ? 0.01 : restoring ? 1.55 : 0.85,
+    ease: 'sine.inOut',
   });
 
   gsap.fromTo(
@@ -104,7 +116,8 @@ function makeContactShadow() {
   texture.colorSpace = THREE.SRGBColorSpace;
   const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
   const sprite = new THREE.Sprite(material);
-  sprite.position.set(4.6, -2.75, -20.25);
+  const [statueX, , statueZ] = SCENE_CONFIG.layers.statue.position;
+  sprite.position.set(statueX, -2.75, statueZ - 0.25);
   sprite.scale.set(13.5, 3.1, 1);
   return sprite;
 }
@@ -171,7 +184,8 @@ function makeParticles() {
   });
 
   const particles = new THREE.Points(geometry, particleMaterial);
-  particles.position.set(4.6, 5.6, -19.3);
+  const [statueX, , statueZ] = SCENE_CONFIG.layers.statue.position;
+  particles.position.set(statueX, 5.6, statueZ + 0.7);
   return particles;
 }
 
@@ -192,72 +206,111 @@ async function init() {
   const scene = new THREE.Scene();
   scene.background = paperColor;
 
-  camera = new THREE.PerspectiveCamera(26, window.innerWidth / window.innerHeight, 0.1, 300);
-  camera.position.set(0, 3.1, 18);
-  camera.lookAt(0, 3.1, -35);
+  camera = new THREE.PerspectiveCamera(
+    SCENE_CONFIG.camera.fov,
+    window.innerWidth / window.innerHeight,
+    SCENE_CONFIG.camera.near,
+    SCENE_CONFIG.camera.far,
+  );
+  camera.position.set(...SCENE_CONFIG.camera.position);
+  camera.lookAt(...SCENE_CONFIG.camera.lookAt);
 
   const loader = new THREE.TextureLoader();
-  const [backgroundTexture, brokenTexture, intactTexture] = await Promise.all([
-    loader.loadAsync('/assets/background-zhu2-graded.png'),
-    loader.loadAsync('/assets/statue-broken.png'),
-    loader.loadAsync('/assets/statue-intact.png'),
+  const [backgroundTexture, pagodaTexture, terrainTexture, brokenTexture, intactTexture] = await Promise.all([
+    loader.loadAsync(SCENE_CONFIG.assets.background),
+    loader.loadAsync(SCENE_CONFIG.assets.pagoda),
+    loader.loadAsync(SCENE_CONFIG.assets.terrain),
+    loader.loadAsync(SCENE_CONFIG.assets.statueBroken),
+    loader.loadAsync(SCENE_CONFIG.assets.statueIntact),
   ]);
 
-  for (const texture of [backgroundTexture, brokenTexture, intactTexture]) {
+  for (const texture of [backgroundTexture, pagodaTexture, terrainTexture, brokenTexture, intactTexture]) {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   }
 
+  const backgroundConfig = SCENE_CONFIG.layers.background;
   const backgroundMaterial = createDistanceMaterial(backgroundTexture, {
     paperColor,
-    nearDistance: 45,
-    farDistance: 145,
-    maxDissolve: 0.2,
+    nearDistance: backgroundConfig.dissolve[0],
+    farDistance: backgroundConfig.dissolve[1],
+    maxDissolve: backgroundConfig.dissolve[2],
   });
-  const background = new THREE.Mesh(new THREE.PlaneGeometry(102, 57.38), backgroundMaterial);
-  background.position.set(-1.5, 8.8, -100);
+  const background = new THREE.Mesh(new THREE.PlaneGeometry(...backgroundConfig.size), backgroundMaterial);
+  background.position.set(...backgroundConfig.position);
   scene.add(background);
 
+  const atmosphereConfig = SCENE_CONFIG.layers.atmosphere;
   const atmosphere = new THREE.Mesh(
-    new THREE.PlaneGeometry(105, 60),
+    new THREE.PlaneGeometry(...atmosphereConfig.size),
     new THREE.MeshBasicMaterial({
-      color: '#eee6d2',
+      color: SCENE_CONFIG.paperColor,
       transparent: true,
-      opacity: 0.055,
+      opacity: atmosphereConfig.opacity,
       depthWrite: false,
       toneMapped: false,
     }),
   );
-  atmosphere.position.set(0, 7, -55);
+  atmosphere.position.set(...atmosphereConfig.position);
   scene.add(atmosphere);
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(145, 155), createGroundMaterial());
+  const pagodaConfig = SCENE_CONFIG.layers.pagoda;
+  const pagodaMaterial = createDistanceMaterial(pagodaTexture, {
+    paperColor,
+    nearDistance: pagodaConfig.dissolve[0],
+    farDistance: pagodaConfig.dissolve[1],
+    maxDissolve: pagodaConfig.dissolve[2],
+    transparent: true,
+    opacity: pagodaConfig.opacity,
+  });
+  const pagoda = new THREE.Mesh(new THREE.PlaneGeometry(...pagodaConfig.size), pagodaMaterial);
+  pagoda.position.set(...pagodaConfig.position);
+  pagoda.renderOrder = 2;
+  scene.add(pagoda);
+
+  const groundConfig = SCENE_CONFIG.layers.ground;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(...groundConfig.size), createGroundMaterial());
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(0, -3.5, -52);
+  ground.position.set(...groundConfig.position);
   scene.add(ground);
 
   scene.add(makeContactShadow());
 
-  const statueGeometry = new THREE.PlaneGeometry(14.6, 14.6);
+  const statueConfig = SCENE_CONFIG.layers.statue;
+  const statueGeometry = new THREE.PlaneGeometry(...statueConfig.size);
   const brokenMaterial = createDistanceMaterial(brokenTexture, {
     paperColor,
-    nearDistance: 20,
-    farDistance: 75,
-    maxDissolve: 0.08,
+    nearDistance: statueConfig.dissolve[0],
+    farDistance: statueConfig.dissolve[1],
+    maxDissolve: statueConfig.dissolve[2],
     transparent: true,
   });
   statueMesh = new THREE.Mesh(statueGeometry, brokenMaterial);
-  statueMesh.position.set(4.6, 3.95, -20);
+  statueMesh.position.set(...statueConfig.position);
   statueMesh.renderOrder = 5;
   scene.add(statueMesh);
 
   repairMaterial = createRepairMaterial(intactTexture);
   const restoredStatue = new THREE.Mesh(statueGeometry, repairMaterial);
-  restoredStatue.position.set(4.6, 3.95, -19.96);
+  restoredStatue.position.set(statueConfig.position[0], statueConfig.position[1], statueConfig.position[2] + 0.04);
   restoredStatue.renderOrder = 6;
   scene.add(restoredStatue);
 
   scene.add(makeParticles());
+
+  const terrainConfig = SCENE_CONFIG.layers.terrain;
+  const terrainMaterial = createDistanceMaterial(terrainTexture, {
+    paperColor,
+    nearDistance: terrainConfig.dissolve[0],
+    farDistance: terrainConfig.dissolve[1],
+    maxDissolve: terrainConfig.dissolve[2],
+    transparent: true,
+    opacity: terrainConfig.opacity,
+  });
+  const terrain = new THREE.Mesh(new THREE.PlaneGeometry(...terrainConfig.size), terrainMaterial);
+  terrain.position.set(...terrainConfig.position);
+  terrain.renderOrder = 8;
+  scene.add(terrain);
 
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
@@ -265,7 +318,7 @@ async function init() {
   paperPass.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
   composer.addPass(paperPass);
 
-  const cameraCurrent = new THREE.Vector3(0, 3.1, 18);
+  const cameraCurrent = new THREE.Vector3(...SCENE_CONFIG.camera.position);
   const cameraTarget = cameraCurrent.clone();
 
   function render() {
@@ -273,12 +326,15 @@ async function init() {
     const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     const scrollProgress = Math.min(1, window.scrollY / maxScroll);
 
-    cameraTarget.x = pointerTarget.x * 0.88;
-    cameraTarget.y = 3.1 - pointerTarget.y * 0.32;
-    cameraTarget.z = 18 - scrollProgress * 5.4;
-    cameraCurrent.lerp(cameraTarget, reducedMotion ? 1 : 0.045);
+    cameraTarget.x = pointerTarget.x * SCENE_CONFIG.camera.pointerTravel[0];
+    cameraTarget.y = SCENE_CONFIG.camera.position[1] - pointerTarget.y * SCENE_CONFIG.camera.pointerTravel[1];
+    cameraTarget.z =
+      SCENE_CONFIG.camera.position[2] -
+      scrollProgress * SCENE_CONFIG.camera.scrollTravel -
+      focusPull.value * SCENE_CONFIG.camera.restorationFocusTravel;
+    cameraCurrent.lerp(cameraTarget, reducedMotion ? 1 : SCENE_CONFIG.camera.damping);
     camera.position.copy(cameraCurrent);
-    camera.lookAt(0, 3.05, -35);
+    camera.lookAt(...SCENE_CONFIG.camera.lookAt);
 
     if (repairMaterial) repairMaterial.uniforms.uTime.value = time;
     if (particleMaterial) particleMaterial.uniforms.uTime.value = time;
