@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="点击残缺石像，在旧纸水彩般的三维遗迹场景中完成修复。"
+    />
+    <title>石上旧梦 · 残像复原</title>
+  </head>
+  <body>
+    <main id="app">
+      <div class="scene-shell" aria-label="遗迹石像修复场景">
+        <canvas id="scene" aria-hidden="true"></canvas>
+
+        <header class="intro" aria-labelledby="page-title">
+          <p class="eyebrow">遗迹 · 修复试验</p>
+          <h1 id="page-title">石上旧梦</h1>
+          <p class="lede">让风化的面容，从时间留下的裂隙中重新显现。</p>
+        </header>
+
+        <aside class="interaction-panel" aria-live="polite">
+          <span class="chapter">壹 · 残像</span>
+          <p id="status">石像仍沉睡在残缺之中</p>
+          <button id="restore" type="button">
+            <span class="button-mark" aria-hidden="true"></span>
+            <span id="button-label">触碰石像 · 开始修复</span>
+          </button>
+          <p class="hint">也可以直接点击画面中的石像</p>
+        </aside>
+
+        <div class="scroll-cue" aria-hidden="true">
+          <span>缓慢向前</span>
+          <i></i>
+        </div>
+
+        <div id="loading" class="loading" role="status">
+          <span></span>
+          <p>展开旧卷</p>
+        </div>
+
+        <div id="fallback" class="fallback" hidden>
+          <p>当前浏览器无法显示三维场景，请使用桌面版 Chrome、Edge 或 Safari。</p>
+        </div>
+      </div>
+      <div class="scroll-space" aria-hidden="true"></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
