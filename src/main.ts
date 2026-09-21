@@ -31,7 +31,8 @@ const paperColor = new THREE.Color(SCENE_CONFIG.paperColor);
 const pointer = new THREE.Vector2();
 const pointerTarget = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
-const clock = new THREE.Clock();
+const timer = new THREE.Timer();
+timer.connect(document);
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const focusPull = { value: 0 };
 
@@ -321,8 +322,9 @@ async function init() {
   const cameraCurrent = new THREE.Vector3(...SCENE_CONFIG.camera.position);
   const cameraTarget = cameraCurrent.clone();
 
-  function render() {
-    const time = clock.getElapsedTime();
+  function render(timestamp?: number) {
+    timer.update(timestamp);
+    const time = timer.getElapsed();
     const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     const scrollProgress = Math.min(1, window.scrollY / maxScroll);
 
