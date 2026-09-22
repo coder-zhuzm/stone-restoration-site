@@ -43,7 +43,7 @@ npm run preview
 - `public/assets/scenes/pagoda/background.png`：佛塔专属山谷与寺院遗址远景。
 - `public/assets/scenes/pagoda/midground.png`：佛塔专属透明寺院残墙中景。
 - `public/assets/scenes/pagoda/foreground.png`：佛塔专属透明砖瓦遗址前景。
-- `public/assets/scenes/pagoda/fragments.png`：佛塔碎砖瓦片图集；当前作为后续贴图碎片参考，首版动画仍使用程序化碎片。
+- `public/assets/scenes/pagoda/fragments.png`：`2×4` 佛塔碎砖瓦片图集；修复动画按 UV 切成八块透明贴图碎片。
 - `public/assets/foreground-terrain.png`：石像场景透明前景岩石地形带。
 
 佛塔场景拥有独立的远景、中景、前景、主修复对象、缺损范围、碎片配色和文案。两个场景只复用公共渲染与交互能力。

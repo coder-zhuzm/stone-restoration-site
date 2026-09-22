@@ -30,6 +30,7 @@
 9. `?scene=statue` 与 `?scene=pagoda` 场景切换入口。
 10. 两个场景共用一套渲染器、相机、状态机、Shader、粒子和动画循环。
 11. 佛塔章节拥有独立的山谷远景、寺院残墙中景与砖瓦前景。
+12. 佛塔使用 `2×4` 图集生成八块贴图碎片，石像保留程序化三维石片。
 
 “已完成”只表示素材已经接入且生产构建通过，不代表浏览器视觉验收已经通过；最终画面由用户自行预览确认。
 
@@ -100,7 +101,7 @@
 | `statue-intact.png` | `1254×1254` | 是 | 石像 | 主物件完整态 | 当前场景专用 |
 | `scenes/pagoda/subject-broken.png` | `1024×1536` | 是 | 佛塔 | 主物件残缺态 | 佛塔场景专用 |
 | `scenes/pagoda/subject-intact.png` | `1024×1536` | 是 | 佛塔 | 主物件完整态 | 佛塔场景专用 |
-| `scenes/pagoda/fragments.png` | `1246×1262` | 是 | 佛塔 | 碎片图集 | 已归档；首版暂不直接渲染 |
+| `scenes/pagoda/fragments.png` | `1246×1262` | 是 | 佛塔 | `2×4` 碎片图集 | 已按 UV 切片进入修复动画 |
 | `scenes/pagoda/background.png` | `1672×941` | 否 | 佛塔 | 完整远景 | 佛塔场景专用 |
 | `scenes/pagoda/midground.png` | `2172×724` | 是 | 佛塔 | 中景残墙 | 佛塔场景专用 |
 | `scenes/pagoda/foreground.png` | `2172×724` | 是 | 佛塔 | 前景砖瓦带 | 佛塔场景专用 |
@@ -423,7 +424,7 @@ Constraints: no dominant foreground object, no text, watermark, logo, border or 
 
 1. 由用户分别预览石像与佛塔场景并反馈构图差异。
 2. 根据实际画面微调佛塔尺寸、接地点、缺损中心和缺损半径。
-3. 如需使用图像碎片替代程序化碎片，将 `fragments.png` 输出为单件文件或建立 UV 图集配置。
+3. 根据用户反馈调整贴图碎片大小、聚合范围和遮挡关系。
 4. 为第三个场景生成同源完整态／残缺态与专属环境素材，再仅新增场景配置。
 5. 场景达到 4 个以上时，将 `sceneConfig.ts` 拆分为注册表与独立场景模块。
 

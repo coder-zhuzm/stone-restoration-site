@@ -116,7 +116,7 @@ Use case: stylized-concept. Asset type: transparent foreground terrain strip for
 |---|---|---|---|---|
 | ASSET-006 | `public/assets/scenes/pagoda/subject-intact.png` | pagoda | 佛塔完整母版 | 已进入代码 |
 | ASSET-007 | `public/assets/scenes/pagoda/subject-broken.png` | pagoda | 佛塔残缺态 | 已进入代码 |
-| ASSET-008 | `public/assets/scenes/pagoda/fragments.png` | pagoda | 碎砖与瓦片图集 | 已归档，暂不直接渲染 |
+| ASSET-008 | `public/assets/scenes/pagoda/fragments.png` | pagoda | 碎砖与瓦片图集 | 已进入代码 |
 | ASSET-009 | `public/assets/scenes/pagoda/background.png` | pagoda | 佛塔场景远景 | 已进入代码 |
 | ASSET-010 | `public/assets/scenes/pagoda/midground.png` | pagoda | 佛塔场景中景残墙 | 已进入代码 |
 | ASSET-011 | `public/assets/scenes/pagoda/foreground.png` | pagoda | 佛塔场景前景砖瓦带 | 已进入代码 |
@@ -176,9 +176,9 @@ Use case: precise-object-edit. Asset type: damaged starting state paired with th
 - 生成日期：`2026-09-22`。
 - 尺寸：`1246×1262`。
 - Alpha：是。
-- 状态：已归档，当前不直接渲染。
+- 状态：已进入代码。
 - 验收：包含八组相互分离的檐角、砖墙、塔刹和斗拱残片；透明背景；风格与主塔一致。
-- 限制：当前为图集而不是八张独立文件；直接接入前需要 UV 图集配置或再次输出单件版本。首版佛塔修复动画使用与佛塔配色一致的程序化三维碎片，避免临时错误切图。
+- 限制：当前按规则的 `2 列 × 4 行` UV 图集切分为八个透明面片；图集切片只能用于佛塔场景，石像继续使用程序化三维石片。
 
 最终提示词：
 

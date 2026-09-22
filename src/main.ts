@@ -15,12 +15,13 @@ import { ACTIVE_SCENE_ID, SCENE_CONFIG } from './sceneConfig';
 type RestorationState = 'broken' | 'restoring' | 'restored' | 'reversing';
 
 type RepairFragment = {
-  mesh: THREE.Mesh<THREE.TetrahedronGeometry, THREE.MeshBasicMaterial>;
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
   start: THREE.Vector3;
   target: THREE.Vector3;
   spin: THREE.Vector3;
   phase: number;
   baseScale: number;
+  billboard: boolean;
 };
 
 function requireElement<T extends Element>(selector: string): T {
@@ -275,15 +276,15 @@ function seededRandom(seed: number) {
   };
 }
 
-function makeRepairFragments() {
+function makeRepairFragments(atlasTexture: THREE.Texture | null) {
   const group = new THREE.Group();
   const random = seededRandom(20260922);
-  const geometry = new THREE.TetrahedronGeometry(0.22, 0);
   const subject = SCENE_CONFIG.layers.subject;
   const palette = subject.fragmentColors;
   group.position.copy(getDamageWorldPosition(0.62));
+  const fragmentCount = atlasTexture ? 8 : 16;
 
-  for (let index = 0; index < 16; index += 1) {
+  for (let index = 0; index < fragmentCount; index += 1) {
     const angle = random() * Math.PI * 2;
     const radius = 0.4 * subject.fragmentSpread + random() * 0.78 * subject.fragmentSpread;
     const start = new THREE.Vector3(
@@ -296,18 +297,35 @@ function makeRepairFragments() {
       (random() - 0.5) * 2.15,
       (random() - 0.5) * 0.35,
     );
+    const fragmentMap = atlasTexture?.clone() ?? null;
+    if (fragmentMap) {
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      fragmentMap.repeat.set(0.5, 0.25);
+      fragmentMap.offset.set(column * 0.5, 1 - (row + 1) * 0.25);
+      fragmentMap.needsUpdate = true;
+    }
     const material = new THREE.MeshBasicMaterial({
-      color: palette[index % palette.length],
+      color: fragmentMap ? '#ffffff' : palette[index % palette.length],
+      map: fragmentMap,
       transparent: true,
       opacity: 0,
       depthWrite: false,
+      alphaTest: fragmentMap ? 0.025 : 0,
       toneMapped: false,
     });
+    const geometry = fragmentMap
+      ? new THREE.PlaneGeometry(2.35, 1.18)
+      : new THREE.TetrahedronGeometry(0.22, 0);
     const mesh = new THREE.Mesh(geometry, material);
-    const baseScale = 0.45 + random() * 0.85;
+    const baseScale = fragmentMap ? 0.62 + random() * 0.42 : 0.45 + random() * 0.85;
     mesh.position.copy(start);
     mesh.scale.setScalar(baseScale);
-    mesh.rotation.set(random() * Math.PI, random() * Math.PI, random() * Math.PI);
+    mesh.rotation.set(
+      fragmentMap ? 0 : random() * Math.PI,
+      fragmentMap ? 0 : random() * Math.PI,
+      random() * Math.PI,
+    );
     mesh.renderOrder = 7;
     mesh.visible = false;
     group.add(mesh);
@@ -318,6 +336,7 @@ function makeRepairFragments() {
       spin: new THREE.Vector3(0.45 + random(), 0.5 + random(), 0.35 + random()),
       phase: random() * Math.PI * 2,
       baseScale,
+      billboard: Boolean(fragmentMap),
     });
   }
 
@@ -335,9 +354,15 @@ function updateRepairFragments(progress: number, time: number) {
 
     fragment.mesh.position.lerpVectors(fragment.start, fragment.target, travel);
     fragment.mesh.position.y += Math.sin(time * 2.2 + fragment.phase) * 0.1 * (1 - travel);
-    fragment.mesh.rotation.x = time * fragment.spin.x + fragment.phase;
-    fragment.mesh.rotation.y = time * fragment.spin.y + fragment.phase * 0.7;
-    fragment.mesh.rotation.z = time * fragment.spin.z;
+    if (fragment.billboard) {
+      fragment.mesh.rotation.x = 0;
+      fragment.mesh.rotation.y = 0;
+      fragment.mesh.rotation.z = Math.sin(time * 1.4 + fragment.phase) * 0.22 * (1 - travel);
+    } else {
+      fragment.mesh.rotation.x = time * fragment.spin.x + fragment.phase;
+      fragment.mesh.rotation.y = time * fragment.spin.y + fragment.phase * 0.7;
+      fragment.mesh.rotation.z = time * fragment.spin.z;
+    }
     fragment.mesh.scale.setScalar(fragment.baseScale * (1 - travel * 0.38));
     fragment.mesh.material.opacity = opacity;
   }
@@ -370,15 +395,27 @@ async function init() {
   camera.lookAt(...SCENE_CONFIG.camera.lookAt);
 
   const loader = new THREE.TextureLoader();
-  const [backgroundTexture, midgroundTexture, terrainTexture, brokenTexture, intactTexture] = await Promise.all([
+  const fragmentTexturePromise = SCENE_CONFIG.assets.fragments
+    ? loader.loadAsync(SCENE_CONFIG.assets.fragments)
+    : Promise.resolve(null);
+  const [backgroundTexture, midgroundTexture, terrainTexture, brokenTexture, intactTexture, fragmentTexture] = await Promise.all([
     loader.loadAsync(SCENE_CONFIG.assets.background),
     loader.loadAsync(SCENE_CONFIG.assets.midground),
     loader.loadAsync(SCENE_CONFIG.assets.terrain),
     loader.loadAsync(SCENE_CONFIG.assets.subjectBroken),
     loader.loadAsync(SCENE_CONFIG.assets.subjectIntact),
+    fragmentTexturePromise,
   ]);
 
-  for (const texture of [backgroundTexture, midgroundTexture, terrainTexture, brokenTexture, intactTexture]) {
+  for (const texture of [
+    backgroundTexture,
+    midgroundTexture,
+    terrainTexture,
+    brokenTexture,
+    intactTexture,
+    fragmentTexture,
+  ]) {
+    if (!texture) continue;
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   }
@@ -458,7 +495,7 @@ async function init() {
   scene.add(restoredSubject);
 
   scene.add(makeParticles());
-  scene.add(makeRepairFragments());
+  scene.add(makeRepairFragments(fragmentTexture));
 
   const terrainConfig = SCENE_CONFIG.layers.terrain;
   const terrainMaterial = createDistanceMaterial(terrainTexture, {

@@ -40,6 +40,7 @@ export type RestorationSceneConfig = {
     terrain: string;
     subjectBroken: string;
     subjectIntact: string;
+    fragments?: string;
   };
   layers: {
     background: { size: Vec2; position: Vec3; dissolve: Vec3 };
@@ -180,6 +181,7 @@ export const SCENE_REGISTRY: Record<SceneId, RestorationSceneConfig> = {
       terrain: '/assets/scenes/pagoda/foreground.png',
       subjectBroken: '/assets/scenes/pagoda/subject-broken.png',
       subjectIntact: '/assets/scenes/pagoda/subject-intact.png',
+      fragments: '/assets/scenes/pagoda/fragments.png',
     },
     layers: {
       ...shared.environmentLayers,
