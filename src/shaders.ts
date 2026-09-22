@@ -38,6 +38,8 @@ export function createDistanceMaterial(
       uFar: { value: options.farDistance },
       uMaxDissolve: { value: options.maxDissolve },
       uOpacity: { value: options.opacity ?? 1 },
+      uFocusDim: { value: 0 },
+      uHover: { value: 0 },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -57,6 +59,8 @@ export function createDistanceMaterial(
       uniform float uFar;
       uniform float uMaxDissolve;
       uniform float uOpacity;
+      uniform float uFocusDim;
+      uniform float uHover;
       varying vec2 vUv;
       varying float vDistance;
 
@@ -65,6 +69,10 @@ export function createDistanceMaterial(
         if (texel.a < 0.025) discard;
         float dissolve = smoothstep(uNear, uFar, vDistance) * uMaxDissolve;
         vec3 color = mix(texel.rgb, uPaperColor, dissolve);
+        float feather = 1.0 - smoothstep(0.08, 0.42, texel.a);
+        float hoverMix = uHover * (0.07 + feather * 0.26);
+        color = mix(color, vec3(0.86, 0.69, 0.43), hoverMix);
+        color *= 1.0 - uFocusDim;
         gl_FragColor = vec4(color, texel.a * uOpacity);
       }
     `,

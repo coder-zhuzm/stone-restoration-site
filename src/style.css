@@ -294,8 +294,15 @@ body[data-state="restored"] .button-mark {
   letter-spacing: 0.08em;
 }
 
+.completion-note b {
+  max-width: 172px;
+  font-weight: 400;
+  line-height: 1.65;
+  letter-spacing: 0.09em;
+}
+
 body[data-state="restored"] .completion-note {
-  height: 36px;
+  height: 46px;
   margin-top: 18px;
   color: rgba(93, 66, 38, 0.68);
   opacity: 1;
@@ -381,7 +388,10 @@ body[data-state="reversing"] .interaction-panel {
   place-content: center;
   padding: 40px;
   color: #493f31;
-  background: #eee6d2;
+  background:
+    linear-gradient(rgba(238, 230, 210, 0.68), rgba(238, 230, 210, 0.86)),
+    var(--fallback-image) center / cover no-repeat,
+    #eee6d2;
   text-align: center;
 }
 

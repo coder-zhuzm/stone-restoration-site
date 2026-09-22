@@ -52,12 +52,17 @@ const timer = new THREE.Timer();
 timer.connect(document);
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const focusPull = { value: 0 };
+const focusDim = { value: 0 };
 const repairFragments: RepairFragment[] = [];
 
 let restorationState: RestorationState = 'broken';
 let subjectMesh: THREE.Mesh | null = null;
+let subjectMaterial: THREE.ShaderMaterial | null = null;
 let repairMaterial: THREE.ShaderMaterial | null = null;
 let particleMaterial: THREE.ShaderMaterial | null = null;
+let hoverStrengthTarget = 0;
+let idleDustTarget = 0.09;
+let pageVisible = !document.hidden;
 let renderer: THREE.WebGLRenderer;
 let composer: EffectComposer;
 let camera: THREE.PerspectiveCamera;
@@ -67,6 +72,7 @@ function applySceneCopy() {
   document.title = copy.documentTitle;
   document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', copy.lead);
   sceneShell.setAttribute('aria-label', copy.ariaLabel);
+  sceneShell.style.setProperty('--fallback-image', `url("${SCENE_CONFIG.assets.background}")`);
   eyebrow.textContent = copy.eyebrow;
   pageTitle.textContent = copy.title;
   lede.textContent = copy.lead;
@@ -95,6 +101,8 @@ function setCopy(state: RestorationState) {
   restoreButton.setAttribute('aria-pressed', String(state === 'restored'));
   restoreButton.setAttribute('aria-label', copy[state][1]);
   completionNote.setAttribute('aria-hidden', String(state !== 'restored'));
+  idleDustTarget = state === 'broken' ? 0.09 : 0;
+  if (state === 'restoring' || state === 'reversing') hoverStrengthTarget = 0;
   if (state === 'broken' || state === 'restored') {
     document.documentElement.style.setProperty('--repair-progress', state === 'restored' ? '1' : '0');
   }
@@ -157,7 +165,17 @@ function toggleRestoration() {
     onComplete: () => {
       restorationState = restoring ? 'restored' : 'broken';
       setCopy(restorationState);
+      if (restoring) {
+        gsap.to(focusDim, { value: 0, duration: reducedMotion ? 0.01 : 0.5, ease: 'sine.out' });
+      }
     },
+  });
+
+  gsap.killTweensOf(focusDim);
+  gsap.to(focusDim, {
+    value: restoring ? 0.08 : 0,
+    duration: reducedMotion ? 0.01 : restoring ? 0.3 : 0.45,
+    ease: 'sine.out',
   });
 
   gsap.to(focusPull, {
@@ -226,6 +244,7 @@ function makeParticles() {
     uniforms: {
       uTime: { value: 0 },
       uProgress: { value: 0 },
+      uIdleStrength: { value: 0.09 },
       uColor: { value: new THREE.Color('#b49a70') },
     },
     vertexShader: `
@@ -233,15 +252,18 @@ function makeParticles() {
       attribute float aSize;
       uniform float uTime;
       uniform float uProgress;
+      uniform float uIdleStrength;
       varying float vAlpha;
       void main() {
         float wave = sin(uTime * 2.1 + aOffset.x * 1.7) * 0.13;
         vec3 drift = aOffset * (1.0 - uProgress);
-        drift.y += wave * sin(3.14159 * uProgress);
+        drift.y += wave * (0.14 + sin(3.14159 * uProgress));
         vec4 mvPosition = modelViewMatrix * vec4(position + drift, 1.0);
         gl_PointSize = aSize * (230.0 / -mvPosition.z);
         gl_Position = projectionMatrix * mvPosition;
-        vAlpha = sin(3.14159 * uProgress) * 0.7;
+        float repairAlpha = sin(3.14159 * uProgress) * 0.7;
+        float idlePulse = uIdleStrength * (0.64 + 0.36 * sin(uTime * 0.85 + aOffset.y));
+        vAlpha = max(repairAlpha, idlePulse);
       }
     `,
     fragmentShader: `
@@ -476,6 +498,7 @@ async function init() {
     maxDissolve: subjectConfig.dissolve[2],
     transparent: true,
   });
+  subjectMaterial = brokenMaterial;
   subjectMesh = new THREE.Mesh(subjectGeometry, brokenMaterial);
   subjectMesh.position.set(...subjectConfig.position);
   subjectMesh.renderOrder = 5;
@@ -511,6 +534,11 @@ async function init() {
   terrain.renderOrder = 8;
   scene.add(terrain);
 
+  const environmentMaterials = [backgroundMaterial, midgroundMaterial, terrainMaterial];
+  const backgroundBase = background.position.clone();
+  const midgroundBase = midground.position.clone();
+  const terrainBase = terrain.position.clone();
+
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const paperPass = new ShaderPass(paperPassShader);
@@ -521,6 +549,10 @@ async function init() {
   const cameraTarget = cameraCurrent.clone();
 
   function render(timestamp?: number) {
+    if (!pageVisible) {
+      requestAnimationFrame(render);
+      return;
+    }
     timer.update(timestamp);
     const time = timer.getElapsed();
     const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
@@ -536,8 +568,34 @@ async function init() {
     camera.position.copy(cameraCurrent);
     camera.lookAt(...SCENE_CONFIG.camera.lookAt);
 
+    if (!reducedMotion) {
+      background.position.x = backgroundBase.x + Math.sin(time * 0.2) * 0.025;
+      midground.position.x = midgroundBase.x + Math.sin(time * 0.29 + 0.7) * 0.09;
+      midground.position.y = midgroundBase.y + Math.sin(time * 0.23 + 1.4) * 0.025;
+      terrain.position.x = terrainBase.x - Math.sin(time * 0.34 + 1.6) * 0.14;
+      terrain.position.y = terrainBase.y + Math.sin(time * 0.27 + 0.4) * 0.035;
+    }
+
+    for (const material of environmentMaterials) {
+      material.uniforms.uFocusDim.value = focusDim.value;
+    }
+    if (subjectMaterial) {
+      subjectMaterial.uniforms.uHover.value = THREE.MathUtils.lerp(
+        subjectMaterial.uniforms.uHover.value,
+        hoverStrengthTarget,
+        reducedMotion ? 1 : 0.09,
+      );
+    }
+
     if (repairMaterial) repairMaterial.uniforms.uTime.value = time;
-    if (particleMaterial) particleMaterial.uniforms.uTime.value = time;
+    if (particleMaterial) {
+      particleMaterial.uniforms.uTime.value = time;
+      particleMaterial.uniforms.uIdleStrength.value = THREE.MathUtils.lerp(
+        particleMaterial.uniforms.uIdleStrength.value,
+        idleDustTarget,
+        reducedMotion ? 1 : 0.045,
+      );
+    }
     if (repairMaterial) updateRepairFragments(repairMaterial.uniforms.uProgress.value, time);
     paperPass.uniforms.uTime.value = time;
 
@@ -553,6 +611,12 @@ async function init() {
     raycaster.setFromCamera(pointer, camera);
     const hovering = subjectMesh ? raycaster.intersectObject(subjectMesh).length > 0 : false;
     canvas.classList.toggle('is-interactive', hovering);
+    hoverStrengthTarget = hovering && (restorationState === 'broken' || restorationState === 'restored') ? 1 : 0;
+  });
+
+  canvas.addEventListener('pointerleave', () => {
+    hoverStrengthTarget = 0;
+    canvas.classList.remove('is-interactive');
   });
 
   canvas.addEventListener('click', (event) => {
@@ -569,6 +633,10 @@ async function init() {
     renderer.setSize(width, height);
     composer.setSize(width, height);
     paperPass.uniforms.uResolution.value.set(width, height);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    pageVisible = !document.hidden;
   });
 
   restoreButton.addEventListener('click', toggleRestoration);
