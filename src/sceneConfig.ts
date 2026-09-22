@@ -175,17 +175,19 @@ export const SCENE_REGISTRY: Record<SceneId, RestorationSceneConfig> = {
       restorationFocusTravel: 0.6,
     },
     assets: {
-      ...shared.environmentAssets,
+      background: '/assets/scenes/pagoda/background.png',
+      midground: '/assets/scenes/pagoda/midground.png',
+      terrain: '/assets/scenes/pagoda/foreground.png',
       subjectBroken: '/assets/scenes/pagoda/subject-broken.png',
       subjectIntact: '/assets/scenes/pagoda/subject-intact.png',
     },
     layers: {
       ...shared.environmentLayers,
       midground: {
-        size: [5.1, 7.65],
-        position: [-10.8, 0.15, -48],
-        dissolve: [32, 108, 0.42],
-        opacity: 0.52,
+        size: [34, 11.33],
+        position: [-6, -0.35, -47],
+        dissolve: [32, 108, 0.34],
+        opacity: 0.72,
       },
       subject: {
         size: [10.4, 15.6],

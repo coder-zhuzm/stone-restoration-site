@@ -110,14 +110,16 @@ Use case: historical-scene. Asset type: transparent midground element for a desk
 Use case: stylized-concept. Asset type: transparent foreground terrain strip for a desktop Three.js 2.5D heritage scene. Input image: the supplied zhu2 background is a style and palette reference only. Primary request: create one wide, low cluster of weathered pale limestone rocks, broken stone slabs, sparse dry grass, and a shallow eroded earth ridge that can sit across the lower edge of the scene. Style/medium: match the reference's warm aged-paper watercolor washes and delicate graphite outlines; slightly stronger detail than the distant background but still restrained. Composition: one continuous horizontal foreground element, low silhouette, widest at the bottom, uneven natural top edge, no important detail near the outer edges, approximately three times wider than tall. Lighting/mood: soft diffuse daylight. Color palette: bone white, sandstone gray, faded sage, muted warm ochre. Constraints: genuinely transparent background around and above the terrain; no rectangular paper field; no separate floating stones; no ground plane beyond the single terrain strip; no cast shadow; no buildings, statues, people, animals, trees, text, stamp, logo, watermark, or border. Avoid: photorealism, thick black outlines, high saturation, dramatic perspective.
 ```
 
-## 3. 待生成资产
+## 3. 佛塔资产状态
 
 | 资产编号 | 文件 | 场景 | 用途 | 状态 |
 |---|---|---|---|---|
 | ASSET-006 | `public/assets/scenes/pagoda/subject-intact.png` | pagoda | 佛塔完整母版 | 已进入代码 |
 | ASSET-007 | `public/assets/scenes/pagoda/subject-broken.png` | pagoda | 佛塔残缺态 | 已进入代码 |
 | ASSET-008 | `public/assets/scenes/pagoda/fragments.png` | pagoda | 碎砖与瓦片图集 | 已归档，暂不直接渲染 |
-| ASSET-009 | `public/assets/scenes/pagoda/background.png` | pagoda | 佛塔场景远景 | 可先复用石像远景，后续生成 |
+| ASSET-009 | `public/assets/scenes/pagoda/background.png` | pagoda | 佛塔场景远景 | 已进入代码 |
+| ASSET-010 | `public/assets/scenes/pagoda/midground.png` | pagoda | 佛塔场景中景残墙 | 已进入代码 |
+| ASSET-011 | `public/assets/scenes/pagoda/foreground.png` | pagoda | 佛塔场景前景砖瓦带 | 已进入代码 |
 
 ## 4. 佛塔场景首批资产
 
@@ -184,7 +186,72 @@ Use case: precise-object-edit. Asset type: damaged starting state paired with th
 Use case: stylized-concept. Asset type: transparent restoration fragment atlas for the supplied five-tier Buddhist pagoda. Input image: the supplied intact pagoda is the sole material, palette and drawing-style reference. Primary request: create one compact set of 8 separate weathered architectural fragments that could plausibly come from the damaged upper part of this exact tower: two curved gray roof-tile corner pieces, two muted mineral-red brick chunks, two pale sandstone finial fragments, and two small carved eave pieces. Style/medium: the same warm aged-paper watercolor washes and delicate graphite outlines as the supplied tower. Composition: pieces separated from one another with clear generous transparent gaps, no overlap, each fully visible, mostly frontal or near-frontal views, arranged as a clean atlas. Constraints: genuinely transparent background; no ground, cast shadow, dust cloud, full building, people, plants, text, seal, logo, watermark, border, black field or paper rectangle. Avoid: photorealism, saturated color, dramatic lighting, random rocks unrelated to the tower.
 ```
 
-## 5. 新资产记录模板
+## 5. 佛塔场景专属环境资产
+
+### ASSET-009 · 佛塔山谷远景
+
+- 最终文件：`public/assets/scenes/pagoda/background.png`
+- 场景：`pagoda`
+- 用途：佛塔章节专属完整远景板。
+- 类型：新生成。
+- 输入参考：原石像远景、ASSET-006 与原石像前景。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`1672×941`。
+- Alpha：否。
+- 状态：已进入代码。
+- 验收：宽幅山谷、河滩、低矮寺院建筑和遗址形成多层远景；画面中没有第二座高塔；中央偏右区域保持安静，可承托主佛塔。
+- 限制：生成图底部自带少量近景遗址，前端以独立中景和前景遮挡、分层，不再从本图抠取单体。
+
+最终提示词：
+
+```text
+Use case: historical-scene. Asset type: dedicated far-background plate for the pagoda chapter of a desktop Three.js 2.5D restoration scene. Input images: Image 1 is the existing wide heritage background and is the reference for warm aged-paper watercolor, fine graphite lines, low contrast and pale atmosphere; Image 2 is the restored five-tier pagoda and is the reference for brick, tile and sandstone colors only; Image 3 is the existing foreground strip and is a palette reference only. Primary request: create a quiet wide 16:9 ancient Chinese Buddhist monastery valley seen frontally through a long lens, with layered misty mountain ridges, a broad pale river or dry valley, low ruined temple foundations, distant low courtyard walls and sparse weathered trees. The center-right must remain visually calm and open so a large transparent five-tier pagoda can later be placed there as the sole focal subject. Do not include any prominent pagoda, tall tower, giant statue or large foreground object. Style/medium: refined warm ivory paper watercolor washes with delicate graphite and pencil outlines, matching the reference images; softened distant detail, low saturation and low contrast. Composition/framing: wide landscape, level horizon, generous pale sky occupying about the upper half, layered depth from mountains to low ruins, no close foreground ridge. Lighting/mood: soft diffuse morning light, restrained archaeological calm. Color palette: warm ivory, pale limestone gray, faded sage, dusty ochre and very restrained mineral red. Constraints: one clean opaque background image; no text, stamp, logo, watermark, border, modern objects, crowds, dramatic sun, heavy fog, black field or paper frame. Avoid: a second dominant tower, 45-degree architectural perspective, photorealism, thick black outlines, saturated colors, high contrast, busy center-right details.
+```
+
+### ASSET-010 · 寺院残墙中景
+
+- 最终文件：`public/assets/scenes/pagoda/midground.png`
+- 场景：`pagoda`
+- 用途：连接远景山谷与主佛塔的横向中景尺度层。
+- 类型：新生成。
+- 输入参考：原石像远景、ASSET-006、原石像前景和 ASSET-009。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`2172×724`。
+- Alpha：是。
+- 状态：已进入代码。
+- 验收：单个连续横向建筑元件、严格正立面、真实透明；中间月门、两侧残墙和瓦顶体量低于主佛塔。
+- 限制：月门内部为透明洞口；该素材只能作为中景残墙，不作为可修复主物件。
+
+最终提示词：
+
+```text
+Use case: historical-scene. Asset type: transparent midground architectural strip for the dedicated pagoda chapter of a desktop Three.js 2.5D restoration scene. Input images: Image 1 is the original wide heritage scene and sets the warm aged-paper watercolor and graphite style; Image 2 is the restored five-tier pagoda and sets the pale brick, mineral-red wood and gray-tile material palette; Image 3 is the existing foreground strip and shows the required genuine transparency behavior; Image 4 is the newly generated monastery-valley background and sets the exact environmental mood. Primary request: create one single low, continuous ruined Buddhist monastery courtyard element: a weathered frontal wall with one modest central moon gate, short broken side walls, several exposed pale stone foundation courses, and two small collapsed gray-tile roof sections. It must remain much lower than the supplied main pagoda and act only as a middle-distance scale layer. Style/medium: the same warm ivory watercolor washes and delicate graphite outlines, with softened midground detail and restrained archaeological weathering. Composition/framing: wide horizontal element, approximately 3.2 times wider than tall, strict frontal or very-long-lens view, complete silhouette, centered, generous transparent margin, no deep 45-degree side walls. Lighting/mood: soft diffuse daylight, low contrast. Color palette: pale limestone, dusty warm brick, muted mineral red, weathered gray tile and faded sage traces. Constraints: genuinely transparent background; one connected architectural element only; no ground plane, horizon, cast shadow, full pagoda, tall tower, statue, people, trees, mountains, text, stamp, logo, watermark, border, glow, black field or paper rectangle. Avoid: photorealism, saturated colors, thick black outlines, dramatic ruins, scattered disconnected objects.
+```
+
+### ASSET-011 · 佛塔砖瓦前景带
+
+- 最终文件：`public/assets/scenes/pagoda/foreground.png`
+- 场景：`pagoda`
+- 用途：佛塔章节画面下沿遮挡、接地和近景视差。
+- 类型：新生成。
+- 输入参考：原石像远景、ASSET-006、原石像前景、ASSET-009 与 ASSET-010。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`2172×724`。
+- Alpha：是。
+- 状态：已进入代码。
+- 验收：连续横向地形带，中心较低、左右较重；包含塔砖、灰瓦、基础石和枯草；真实透明，无完整建筑和文字。
+- 限制：只为佛塔场景设计；放入其他场景会带来明显的砖瓦语义。
+
+最终提示词：
+
+```text
+Use case: stylized-concept. Asset type: transparent foreground terrain strip for the dedicated pagoda chapter of a desktop Three.js 2.5D restoration scene. Input images: Image 1 is the original wide heritage background and sets the watercolor-pencil style; Image 2 is the intact five-tier pagoda and sets the brick, tile and sandstone materials; Image 3 is the existing rock foreground and is the exact composition and transparency reference; Image 4 is the new pagoda-valley background and sets the environmental palette; Image 5 is the new ruined monastery wall and sets the degree of weathering. Primary request: create one continuous low foreground ridge made from weathered pale foundation stones, a few muted mineral-red ancient brick fragments, several broken gray curved roof tiles, sparse faded dry grass and shallow dusty earth. It should feel like archaeological debris around the five-tier pagoda without becoming a pile of separate floating objects. Style/medium: warm aged-paper watercolor washes and delicate graphite outlines matching all supplied references; foreground detail slightly stronger than the background but still refined and restrained. Composition/framing: one wide horizontal element approximately three times wider than tall, widest along the bottom edge, irregular natural top silhouette, slightly heavier clusters near the left and right thirds, a lower quieter center so the main pagoda remains visible; every edge fully contained. Lighting/mood: soft diffuse daylight, no dramatic highlights. Color palette: bone white, limestone gray, dusty ochre, muted terracotta red, weathered tile gray and faded sage. Constraints: genuinely transparent background around and above the strip; no paper rectangle, ground plane beyond this single strip, cast shadow, full wall, gate, complete pagoda, statue, people, animals, text, stamp, logo, watermark, border or black field. Avoid: photorealism, thick black outlines, saturated colors, disconnected floating fragments, very tall rocks, strong perspective.
+```
+
+## 6. 新资产记录模板
 
 ~~~~text
 ### ASSET-NNN · 名称

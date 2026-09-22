@@ -36,14 +36,17 @@ npm run preview
 
 ## 场景素材
 
-- `public/assets/background-zhu2-graded.png`：两个场景首版共用的远景古城背景。
+- `public/assets/background-zhu2-graded.png`：石像场景远景古城背景。
 - `public/assets/midground-pagoda.png`：正立面透明中景塔。
 - `public/assets/statue-broken.png`、`statue-intact.png`：石像残缺态与完整态。
 - `public/assets/scenes/pagoda/subject-broken.png`、`subject-intact.png`：佛塔残缺态与完整态。
+- `public/assets/scenes/pagoda/background.png`：佛塔专属山谷与寺院遗址远景。
+- `public/assets/scenes/pagoda/midground.png`：佛塔专属透明寺院残墙中景。
+- `public/assets/scenes/pagoda/foreground.png`：佛塔专属透明砖瓦遗址前景。
 - `public/assets/scenes/pagoda/fragments.png`：佛塔碎砖瓦片图集；当前作为后续贴图碎片参考，首版动画仍使用程序化碎片。
-- `public/assets/foreground-terrain.png`：两个场景首版共用的透明前景岩石地形带。
+- `public/assets/foreground-terrain.png`：石像场景透明前景岩石地形带。
 
-佛塔场景当前复用石像场景的远景与前景，只替换主修复对象、缺损范围、构图参数、碎片颜色和文案。后续如需形成完全独立的视觉章节，应再生成佛塔专属远景、中景和前景。
+佛塔场景拥有独立的远景、中景、前景、主修复对象、缺损范围、碎片配色和文案。两个场景只复用公共渲染与交互能力。
 
 ## 文档
 
