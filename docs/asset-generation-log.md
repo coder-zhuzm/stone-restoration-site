@@ -251,7 +251,122 @@ Use case: historical-scene. Asset type: transparent midground architectural stri
 Use case: stylized-concept. Asset type: transparent foreground terrain strip for the dedicated pagoda chapter of a desktop Three.js 2.5D restoration scene. Input images: Image 1 is the original wide heritage background and sets the watercolor-pencil style; Image 2 is the intact five-tier pagoda and sets the brick, tile and sandstone materials; Image 3 is the existing rock foreground and is the exact composition and transparency reference; Image 4 is the new pagoda-valley background and sets the environmental palette; Image 5 is the new ruined monastery wall and sets the degree of weathering. Primary request: create one continuous low foreground ridge made from weathered pale foundation stones, a few muted mineral-red ancient brick fragments, several broken gray curved roof tiles, sparse faded dry grass and shallow dusty earth. It should feel like archaeological debris around the five-tier pagoda without becoming a pile of separate floating objects. Style/medium: warm aged-paper watercolor washes and delicate graphite outlines matching all supplied references; foreground detail slightly stronger than the background but still refined and restrained. Composition/framing: one wide horizontal element approximately three times wider than tall, widest along the bottom edge, irregular natural top silhouette, slightly heavier clusters near the left and right thirds, a lower quieter center so the main pagoda remains visible; every edge fully contained. Lighting/mood: soft diffuse daylight, no dramatic highlights. Color palette: bone white, limestone gray, dusty ochre, muted terracotta red, weathered tile gray and faded sage. Constraints: genuinely transparent background around and above the strip; no paper rectangle, ground plane beyond this single strip, cast shadow, full wall, gate, complete pagoda, statue, people, animals, text, stamp, logo, watermark, border or black field. Avoid: photorealism, thick black outlines, saturated colors, disconnected floating fragments, very tall rocks, strong perspective.
 ```
 
-## 6. 新资产记录模板
+## 6. 密檐砖塔场景资产
+
+### ASSET-012 · 完整十一层密檐砖塔
+
+- 最终文件：`public/assets/scenes/brick-pagoda/subject-intact.png`
+- 场景：`brick-pagoda`
+- 用途：第三场景修复完成态和残缺态唯一母版。
+- 类型：新生成。
+- 输入参考：五层佛塔主体及其远、中、前景，仅参考笔触、纸色和材质。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`1024×1536`。
+- Alpha：是。
+- 状态：已进入代码。
+- 验收：十一层瘦高塔身、完整塔基、层层密檐和塔刹；严格正立面；与五层楼阁式佛塔轮廓明显不同。
+- 限制：部分密檐仍保留较明显的瓦顶曲线，属于密檐塔的水彩风格化表达，不作为建筑测绘图使用。
+
+最终提示词：
+
+```text
+Use case: historical-scene. Asset type: transparent primary restoration subject for a third desktop Three.js 2.5D heritage scene. Input images: Image 1 is the existing five-tier pagoda and is a style, palette and edge-quality reference only; do not copy its pavilion-tower geometry. Image 2 is the pagoda valley background and sets the warm paper atmosphere. Images 3 and 4 are midground and foreground references for material harmony only. Primary request: create one complete ancient Chinese eleven-storey square dense-eave brick pagoda, strictly front-facing, vertically upright and symmetrical. It must be visibly different from the supplied five-tier pavilion pagoda: a tall slender tapering body, eleven closely stacked shallow brick eaves, small centered arched niches, a substantial square stone plinth, and a restrained metal or stone finial. Show the entire foundation, every dense eave, upper crown and finial without cropping. Style/medium: warm aged-paper watercolor washes with delicate graphite and fine pencil outlines, muted archaeological detail, matching the supplied scene. Materials: weathered ochre-red brick, pale limestone bands, dark gray shallow tile or brick eaves, restrained mineral stains. Composition/framing: orthographic or very-long-lens frontal elevation, centered on one tall portrait canvas with generous genuinely transparent margin. Lighting/mood: soft diffuse daylight, low contrast, dignified and quiet. Constraints: genuinely transparent background; only one pagoda; no ground, horizon, cast shadow, trees, mountains, walls, people, animals, text, seal, logo, watermark, border, glow, paper rectangle or black field. Avoid: 45-degree perspective, side view, wide pavilion roofs, five large storeys, open balconies, photorealism, thick black outlines, saturated red.
+```
+
+### ASSET-013 · 残缺十一层密檐砖塔
+
+- 最终文件：`public/assets/scenes/brick-pagoda/subject-broken.png`
+- 场景：`brick-pagoda`
+- 用途：第三场景初始残缺态。
+- 类型：从 ASSET-012 局部编辑。
+- 输入参考：ASSET-012。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`1024×1536`。
+- Alpha：是。
+- 状态：已进入代码。
+- 验收：损坏集中在塔刹、最上三层右侧檐角和上部砖身；下部八层、塔基、门洞与整体位置保持一致。
+- 限制：修复 Shader 必须限制在图像上部，避免完整态差异扩散到未损坏层。
+
+最终提示词：
+
+```text
+Use case: precise-object-edit. Asset type: damaged starting state paired with the supplied intact eleven-storey brick pagoda for a Three.js restoration scene. Input image: the supplied transparent eleven-storey pagoda is the sole geometry, composition, canvas, palette, lighting and style source. Primary request: damage only the upper portion of this exact tower. Break away the upper half of the finial, remove an irregular section from the viewer-right corners of the highest three shallow eaves, and create one limited chipped-brick cavity in the tower body directly below those eaves. Show authentic fractured ochre brick, broken gray tiles, rough pale mortar and restrained cracks. Invariants: keep the exact same canvas size, tower position, scale, frontal projection, square foundation, entrance, lower eight storeys, all undamaged niches, all undamaged eaves, colors, lighting, watercolor-pencil style and genuine transparency. Constraints: no global redraw, no perspective change, no floating debris, no ground, cast shadow, fire, soot, plants, glow, text, watermark, paper rectangle or black background. Avoid: mosaic blocks, blur, censor-like damage, perfectly rectangular holes, collapse of the entire tower. Output one transparent image aligned exactly to the supplied source.
+```
+
+### ASSET-014 · 密檐塔荒原远景
+
+- 最终文件：`public/assets/scenes/brick-pagoda/background.png`
+- 场景：`brick-pagoda`
+- 用途：第三场景专属完整远景板。
+- 类型：新生成。
+- 输入参考：密檐塔主体和佛塔山谷远景。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`1672×941`。
+- Alpha：否。
+- 状态：已进入代码。
+- 验收：黄土荒原、干涸河床、石窟和远山建立北方场景语义；画面没有第二座高塔。
+- 限制：右侧寺院建筑只作为远景色块，不能拆成独立建筑素材。
+
+最终提示词：
+
+```text
+Use case: historical-scene. Asset type: dedicated opaque far-background plate for an eleven-storey dense-eave brick pagoda restoration chapter. Input images: use the recent eleven-storey pagoda imagery as the subject material reference and the supplied wide valley scene as the watercolor-paper style reference. Primary request: create a quiet wide 16:9 northern Chinese loess plateau and ancient temple frontier landscape seen frontally through a long lens: layered eroded ochre cliffs, distant pale mountains, a broad dry riverbed, low cave-temple openings and scattered ruined foundation lines. Leave the center-left visually calm and open so a tall transparent brick pagoda can later stand there as the sole focal subject. Do not include any prominent pagoda, tower, giant statue or close foreground wall. Style/medium: refined warm ivory paper watercolor washes with delicate graphite lines, restrained dusty atmosphere, lower saturation and softer detail than the main subject. Composition/framing: wide level horizon, generous pale sky in the upper half, layered depth, no close foreground ridge. Lighting/mood: soft diffuse late-morning light, dry archaeological calm. Color palette: warm ivory, loess ochre, dusty brick red, pale limestone, faded sage and blue-gray distant ridges. Constraints: one clean opaque background; no text, stamp, logo, watermark, border, modern objects, crowds, dramatic sun, heavy gray fog, black field or paper frame. Avoid: a second dominant tower, 45-degree architecture, photorealism, thick black outlines, high contrast, saturated orange.
+```
+
+### ASSET-015 · 石窟崖壁中景
+
+- 最终文件：`public/assets/scenes/brick-pagoda/midground.png`
+- 场景：`brick-pagoda`
+- 用途：连接荒原远景与密檐塔的中景尺度层。
+- 类型：新生成。
+- 输入参考：密檐塔主体和 ASSET-014。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`2206×713`。
+- Alpha：是。
+- 状态：已进入代码。
+- 验收：单个连续横向黄土崖壁，包含五个小型石窟洞口、残砖、基础石和植被；背景真实透明。
+- 限制：洞口内部为深色颜料而非透明洞口，以保持中景实体感。
+
+最终提示词：
+
+```text
+Use case: historical-scene. Asset type: transparent midground strip for the eleven-storey brick pagoda chapter. Input images: use the recent eleven-storey pagoda imagery for brick and stone material harmony and the newly generated loess plateau background for exact landscape mood and palette. Primary request: create one connected low loess-cliff monastery remnant viewed frontally: a horizontal eroded ochre cliff face with five small dark cave-temple openings, a broken pale stone retaining base, a short ruined brick parapet and sparse faded shrubs embedded in the cliff. It must stay low and wide, serving only as a middle-distance depth layer behind the main pagoda. Style/medium: warm aged-paper watercolor washes with delicate graphite outlines, restrained archaeological detail, matching the supplied scene. Composition/framing: approximately 3.2 times wider than tall, strict frontal or very-long-lens view, one connected silhouette, complete edges, generous transparent margin, no deep side perspective. Lighting/mood: soft diffuse daylight, low contrast. Color palette: loess ochre, dusty brick red, pale limestone, faded sage and gray-brown cave interiors. Constraints: genuinely transparent background around and above the single cliff element; no ground plane beyond the element, horizon, cast shadow, full pagoda, tall tower, people, large trees, distant mountains, text, stamp, logo, watermark, border, glow, black field or paper rectangle. Avoid: photorealism, saturated orange, thick black outlines, dramatic overhangs, scattered disconnected rocks.
+```
+
+### ASSET-016 · 密檐塔砖石前景
+
+- 最终文件：`public/assets/scenes/brick-pagoda/foreground.png`
+- 场景：`brick-pagoda`
+- 用途：第三场景下沿遮挡、接地和近景视差。
+- 类型：新生成。
+- 输入参考：密檐塔主体、ASSET-014 和 ASSET-015。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`2172×724`。
+- Alpha：是。
+- 状态：已进入代码。
+- 验收：连续横向地形带，中心低、左右重；包含黄土、旧砖、浅色基石、灰瓦和枯草；真实透明。
+- 限制：砖石语义和黄土色调为第三场景专用。
+
+最终提示词：
+
+```text
+Use case: stylized-concept. Asset type: transparent foreground terrain strip for the eleven-storey dense-eave brick pagoda chapter. Input images: use the recent eleven-storey pagoda imagery for brick, stone and eave materials; use the newly generated loess plateau background and cave-temple midground for the exact dry northern palette and weathering. Primary request: create one continuous low foreground ridge made from eroded loess earth, weathered ochre-red ancient bricks, pale rectangular foundation stones, a few broken shallow gray eave tiles and sparse faded dry grass. The ridge should feel related to a dense-eave brick tower without becoming a collection of floating objects. Style/medium: warm aged-paper watercolor washes with delicate graphite outlines; slightly stronger foreground detail than the background but still restrained. Composition/framing: one horizontal element approximately three times wider than tall, widest along the bottom, natural uneven top edge, heavier brick-and-stone clusters near the left and right thirds, a low quiet center opening so the tower base stays visible, all edges contained. Lighting/mood: soft diffuse daylight. Color palette: loess ochre, dusty brick red, pale limestone, gray tile and faded sage. Constraints: genuinely transparent background around and above the strip; no paper rectangle, extra ground plane, cast shadow, full wall, cave facade, complete pagoda, people, animals, text, stamp, logo, watermark, border or black field. Avoid: photorealism, thick black outlines, saturated orange, disconnected fragments, very tall rocks, strong perspective.
+```
+
+### REJECTED-001 · 密檐塔碎片图集
+
+- 目标：生成规则 `2×4` 的八块密檐塔碎片图集。
+- 尝试次数：2。
+- 结果：八块碎片的排列和内容合格，但两次输出均带棕色渐变纸底，没有真实 Alpha。
+- 处理：未复制到项目、未接入代码；第三场景使用按砖石配色配置的程序化三维碎片。
+- 复用建议：后续应逐件生成透明碎片，或使用能够可靠输出 Alpha 的模型重新生成，不应通过固定白色阈值强行抠底。
+
+## 7. 新资产记录模板
 
 ~~~~text
 ### ASSET-NNN · 名称

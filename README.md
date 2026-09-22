@@ -1,6 +1,6 @@
 # 遗迹修复场景集
 
-PC 端 Three.js 遗迹修复场景。当前包含石像与五层佛塔两个场景；点击残缺主体后，缺损区域以局部 Shader、石粉粒子、程序化碎片和状态动画逐步恢复。
+PC 端 Three.js 遗迹修复场景。当前包含石像、五层楼阁式佛塔和十一层密檐砖塔三个场景；点击残缺主体后，缺损区域以局部 Shader、石粉粒子、碎片和状态动画逐步恢复。
 
 ## 本地运行
 
@@ -13,6 +13,7 @@ npm run dev
 
 - 石像：`http://127.0.0.1:5173/?scene=statue`
 - 佛塔：`http://127.0.0.1:5173/?scene=pagoda`
+- 密檐塔：`http://127.0.0.1:5173/?scene=brick-pagoda`
 
 ## 生产构建
 
@@ -45,8 +46,9 @@ npm run preview
 - `public/assets/scenes/pagoda/foreground.png`：佛塔专属透明砖瓦遗址前景。
 - `public/assets/scenes/pagoda/fragments.png`：`2×4` 佛塔碎砖瓦片图集；修复动画按 UV 切成八块透明贴图碎片。
 - `public/assets/foreground-terrain.png`：石像场景透明前景岩石地形带。
+- `public/assets/scenes/brick-pagoda/`：密檐砖塔的完整态、残缺态、荒原远景、石窟中景和砖石前景。
 
-佛塔场景拥有独立的远景、中景、前景、主修复对象、缺损范围、碎片配色和文案。两个场景只复用公共渲染与交互能力。
+三个场景均拥有独立的主修复对象和场景参数；两座佛塔还拥有各自的远景、中景与前景。所有场景只复用公共渲染与交互能力。
 
 ## 文档
 
