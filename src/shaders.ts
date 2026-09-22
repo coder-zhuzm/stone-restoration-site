@@ -75,12 +75,17 @@ export function createDistanceMaterial(
   });
 }
 
-export function createRepairMaterial(texture: THREE.Texture) {
+export function createRepairMaterial(
+  texture: THREE.Texture,
+  options: { damageCenter: readonly [number, number]; damageRadius: readonly [number, number] },
+) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uMap: { value: texture },
       uProgress: { value: 0 },
       uTime: { value: 0 },
+      uDamageCenter: { value: new THREE.Vector2(...options.damageCenter) },
+      uDamageRadius: { value: new THREE.Vector2(...options.damageRadius) },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -93,6 +98,8 @@ export function createRepairMaterial(texture: THREE.Texture) {
       uniform sampler2D uMap;
       uniform float uProgress;
       uniform float uTime;
+      uniform vec2 uDamageCenter;
+      uniform vec2 uDamageRadius;
       varying vec2 vUv;
       ${noiseGLSL}
 
@@ -100,15 +107,16 @@ export function createRepairMaterial(texture: THREE.Texture) {
         vec4 texel = texture2D(uMap, vUv);
         if (texel.a < 0.025) discard;
 
-        vec2 centered = vec2((vUv.x - 0.5) * 1.08, vUv.y - 0.735);
+        vec2 centered = (vUv - uDamageCenter) / uDamageRadius;
         float radial = length(centered);
-        float region = 1.0 - smoothstep(0.19, 0.285, radial);
+        float region = 1.0 - smoothstep(0.78, 1.05, radial);
         float organic = valueNoise(vUv * 12.0 + vec2(uTime * 0.025, 0.0));
-        float frontier = uProgress * 0.38;
-        float reveal = 1.0 - smoothstep(frontier - 0.035, frontier + 0.025, radial + (organic - 0.5) * 0.035);
+        float frontier = uProgress * 1.28;
+        float distortion = (organic - 0.5) * 0.14;
+        float reveal = 1.0 - smoothstep(frontier - 0.12, frontier + 0.08, radial + distortion);
         reveal *= region;
 
-        float edge = smoothstep(0.018, 0.0, abs(radial - frontier + (organic - 0.5) * 0.035));
+        float edge = smoothstep(0.08, 0.0, abs(radial - frontier + distortion));
         edge *= region * step(0.015, uProgress) * step(uProgress, 0.985);
         vec3 warmStone = vec3(0.76, 0.61, 0.38);
         vec3 color = mix(texel.rgb, warmStone, edge * 0.28);

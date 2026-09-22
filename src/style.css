@@ -86,6 +86,60 @@ h1 {
   letter-spacing: 0.12em;
 }
 
+.scene-switcher {
+  position: absolute;
+  z-index: 7;
+  top: clamp(42px, 7vh, 84px);
+  right: clamp(54px, 6.3vw, 120px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+}
+
+.scene-switcher a {
+  position: relative;
+  padding: 7px 2px;
+  color: rgba(63, 54, 42, 0.46);
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.scene-switcher a::after {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  left: 0;
+  height: 1px;
+  content: "";
+  transform: scaleX(0);
+  background: #8f6943;
+  transition: transform 180ms ease;
+}
+
+.scene-switcher a:hover,
+.scene-switcher a:focus-visible,
+.scene-switcher a[aria-current="page"] {
+  color: #765234;
+}
+
+.scene-switcher a[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+.scene-switcher a:focus-visible {
+  outline: 1px solid rgba(143, 84, 38, 0.5);
+  outline-offset: 4px;
+}
+
+.scene-switcher > span {
+  width: 18px;
+  height: 1px;
+  background: rgba(66, 55, 41, 0.2);
+}
+
 .interaction-panel {
   position: absolute;
   z-index: 5;

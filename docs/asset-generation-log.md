@@ -1,4 +1,4 @@
-# 石上旧梦 · 生成素材台账
+# 遗迹修复场景集 · 生成素材台账
 
 ## 1. 记录规则
 
@@ -114,12 +114,77 @@ Use case: stylized-concept. Asset type: transparent foreground terrain strip for
 
 | 资产编号 | 文件 | 场景 | 用途 | 状态 |
 |---|---|---|---|---|
-| ASSET-006 | `public/assets/scenes/pagoda/subject-intact.png` | pagoda | 佛塔完整母版 | 待生成 |
-| ASSET-007 | `public/assets/scenes/pagoda/subject-broken.png` | pagoda | 佛塔残缺态 | 依赖 ASSET-006 |
-| ASSET-008 | `public/assets/scenes/pagoda/fragments.png` | pagoda | 碎砖与瓦片图集 | 待生成 |
+| ASSET-006 | `public/assets/scenes/pagoda/subject-intact.png` | pagoda | 佛塔完整母版 | 已进入代码 |
+| ASSET-007 | `public/assets/scenes/pagoda/subject-broken.png` | pagoda | 佛塔残缺态 | 已进入代码 |
+| ASSET-008 | `public/assets/scenes/pagoda/fragments.png` | pagoda | 碎砖与瓦片图集 | 已归档，暂不直接渲染 |
 | ASSET-009 | `public/assets/scenes/pagoda/background.png` | pagoda | 佛塔场景远景 | 可先复用石像远景，后续生成 |
 
-## 4. 新资产记录模板
+## 4. 佛塔场景首批资产
+
+### ASSET-006 · 完整五层佛塔
+
+- 最终文件：`public/assets/scenes/pagoda/subject-intact.png`
+- 场景：`pagoda`
+- 用途：佛塔修复完成态和残缺态唯一母版。
+- 类型：新生成。
+- 输入参考：`midground-pagoda.png` 作为笔触与材质参考；`background-zhu2-graded.png` 作为环境色调参考。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`1024×1536`。
+- Alpha：是。
+- 状态：已进入代码。
+- 验收：完整五层结构，严格正立面，完整显示基础、塔身、檐口和塔刹；无地面、文字和水印。
+- 限制：透明边缘存在生成模型常见的彩色像素晕边，页面中应使用 `alphaTest`、纸色融合和适度缩小控制。
+
+最终提示词：
+
+```text
+Use case: historical-scene. Asset type: transparent primary restoration subject for a desktop Three.js 2.5D heritage scene. Input images: Image 1 is a style and palette reference for watercolor line quality only; Image 2 is a wider environment style reference only. Do not copy Image 1's exact three-tier geometry. Primary request: create one complete monumental ancient Chinese Buddhist brick-and-stone pagoda with five clearly differentiated tiers, strictly front-facing, vertically upright and symmetrical. Show the entire stepped foundation, tower body, every eave, roof ridge, upper drum, and tall finial without cropping. Style/medium: warm aged-paper watercolor washes combined with delicate graphite and fine pencil outlines; muted bone white, limestone gray, pale sage, restrained mineral red and warm ochre; soft diffuse daylight, low contrast, subtle archaeological weathering. Composition: orthographic or very long-lens frontal view, centered on one fixed tall canvas with generous genuinely transparent margin. Materials: weathered pale sandstone, faded brick red, gray roof tiles, subtle age stains while remaining structurally complete. Constraints: genuinely transparent background; only one pagoda; no ground, horizon, cast shadow, trees, mountains, walls, people, animals, text, seal, logo, watermark, border, halo, glow, or paper rectangle. Avoid: 45-degree perspective, side view, wide-angle distortion, missing eaves, asymmetrical roof tiers, black background, photorealism, thick black outlines, saturated colors.
+```
+
+### ASSET-007 · 残缺五层佛塔
+
+- 最终文件：`public/assets/scenes/pagoda/subject-broken.png`
+- 场景：`pagoda`
+- 用途：佛塔场景初始残缺态。
+- 类型：从 ASSET-006 局部编辑。
+- 输入参考：ASSET-006。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`1024×1536`。
+- Alpha：是。
+- 状态：已进入代码。
+- 验收：破损集中在塔刹、最高层右侧檐角和最高层塔身；下部四层、基础、门窗和整体位置保持一致；破损读取为砖石与瓦片断裂。
+- 限制：生成式编辑可能在最高层未损坏线条中产生轻微差异；前端修复区域必须限制在画面上部。
+
+最终提示词：
+
+```text
+Use case: precise-object-edit. Asset type: damaged starting state paired with the supplied intact pagoda for a Three.js restoration scene. Input image: the supplied transparent intact five-tier pagoda is the sole geometry, composition, palette, lighting, canvas and style source. Primary request: damage only the upper portion of this exact tower. Remove most of the tall finial above the highest roof, break away the viewer-right corner of the highest eave, and create one limited irregular missing-masonry patch in the uppermost tower body. Add authentic chipped gray roof tiles, fractured brick edges, exposed rough pale stone and a few restrained cracks. Invariants: keep the exact same canvas size, tower position, scale, frontal orthographic projection, stepped foundation, lower four tiers, doors, windows, undamaged roof lines, colors, lighting, watercolor-pencil style and genuine transparency. Constraints: no global redraw, no new architecture, no perspective change, no floating debris, no ground, no cast shadow, no glow, no text, no watermark, no paper rectangle. Avoid: mosaic blocks, blur, censor-like damage, perfectly rectangular holes, fire or soot, vegetation, collapse of the entire building. Output one transparent image aligned exactly to the supplied source.
+```
+
+### ASSET-008 · 佛塔碎砖与瓦片图集
+
+- 最终文件：`public/assets/scenes/pagoda/fragments.png`
+- 场景：`pagoda`
+- 用途：提供佛塔修复特有的瓦片、砖块、塔刹和檐角纹理参考；首版代码可以继续使用程序化三维石片。
+- 类型：新生成。
+- 输入参考：ASSET-006。
+- 生成模型：OpenAI 内置 `imagegen`。
+- 生成日期：`2026-09-22`。
+- 尺寸：`1246×1262`。
+- Alpha：是。
+- 状态：已归档，当前不直接渲染。
+- 验收：包含八组相互分离的檐角、砖墙、塔刹和斗拱残片；透明背景；风格与主塔一致。
+- 限制：当前为图集而不是八张独立文件；直接接入前需要 UV 图集配置或再次输出单件版本。首版佛塔修复动画使用与佛塔配色一致的程序化三维碎片，避免临时错误切图。
+
+最终提示词：
+
+```text
+Use case: stylized-concept. Asset type: transparent restoration fragment atlas for the supplied five-tier Buddhist pagoda. Input image: the supplied intact pagoda is the sole material, palette and drawing-style reference. Primary request: create one compact set of 8 separate weathered architectural fragments that could plausibly come from the damaged upper part of this exact tower: two curved gray roof-tile corner pieces, two muted mineral-red brick chunks, two pale sandstone finial fragments, and two small carved eave pieces. Style/medium: the same warm aged-paper watercolor washes and delicate graphite outlines as the supplied tower. Composition: pieces separated from one another with clear generous transparent gaps, no overlap, each fully visible, mostly frontal or near-frontal views, arranged as a clean atlas. Constraints: genuinely transparent background; no ground, cast shadow, dust cloud, full building, people, plants, text, seal, logo, watermark, border, black field or paper rectangle. Avoid: photorealism, saturated color, dramatic lighting, random rocks unrelated to the tower.
+```
+
+## 5. 新资产记录模板
 
 ~~~~text
 ### ASSET-NNN · 名称

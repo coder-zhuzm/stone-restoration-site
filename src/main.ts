@@ -10,7 +10,7 @@ import {
   createRepairMaterial,
   paperPassShader,
 } from './shaders';
-import { SCENE_CONFIG } from './sceneConfig';
+import { ACTIVE_SCENE_ID, SCENE_CONFIG } from './sceneConfig';
 
 type RestorationState = 'broken' | 'restoring' | 'restored' | 'reversing';
 
@@ -30,6 +30,12 @@ function requireElement<T extends Element>(selector: string): T {
 }
 
 const canvas = requireElement<HTMLCanvasElement>('#scene');
+const sceneShell = requireElement<HTMLDivElement>('.scene-shell');
+const eyebrow = requireElement<HTMLParagraphElement>('.eyebrow');
+const pageTitle = requireElement<HTMLHeadingElement>('#page-title');
+const lede = requireElement<HTMLParagraphElement>('.lede');
+const chapter = requireElement<HTMLSpanElement>('.chapter');
+const hint = requireElement<HTMLParagraphElement>('.hint');
 const loading = requireElement<HTMLDivElement>('#loading');
 const fallback = requireElement<HTMLDivElement>('#fallback');
 const restoreButton = requireElement<HTMLButtonElement>('#restore');
@@ -48,18 +54,36 @@ const focusPull = { value: 0 };
 const repairFragments: RepairFragment[] = [];
 
 let restorationState: RestorationState = 'broken';
-let statueMesh: THREE.Mesh | null = null;
+let subjectMesh: THREE.Mesh | null = null;
 let repairMaterial: THREE.ShaderMaterial | null = null;
 let particleMaterial: THREE.ShaderMaterial | null = null;
 let renderer: THREE.WebGLRenderer;
 let composer: EffectComposer;
 let camera: THREE.PerspectiveCamera;
 
+function applySceneCopy() {
+  const { copy } = SCENE_CONFIG;
+  document.title = copy.documentTitle;
+  document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', copy.lead);
+  sceneShell.setAttribute('aria-label', copy.ariaLabel);
+  eyebrow.textContent = copy.eyebrow;
+  pageTitle.textContent = copy.title;
+  lede.textContent = copy.lead;
+  chapter.textContent = copy.chapter;
+  hint.textContent = copy.directHint;
+
+  document.querySelectorAll<HTMLAnchorElement>('[data-scene]').forEach((link) => {
+    if (link.dataset.scene === ACTIVE_SCENE_ID) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+}
+
 function setCopy(state: RestorationState) {
+  const { copy: sceneCopy } = SCENE_CONFIG;
   const copy = {
-    broken: ['石像仍沉睡在残缺之中', '触碰石像 · 开始修复'],
+    broken: [sceneCopy.brokenStatus, sceneCopy.brokenAction],
     restoring: ['碎石与记忆正在归位', '修复进行中'],
-    restored: ['失落的面容已经复原', '再次触碰 · 回到残像'],
+    restored: [sceneCopy.restoredStatus, sceneCopy.restoredAction],
     reversing: ['时间重新漫过石面', '正在回溯'],
   } as const;
 
@@ -82,17 +106,26 @@ function updateRestorationFeedback(progress: number, restoring: boolean) {
   document.documentElement.style.setProperty('--repair-progress', safeProgress.toFixed(4));
 
   if (restoring) {
-    if (safeProgress < 0.14) statusLabel.textContent = '缺损边缘正在苏醒';
-    else if (safeProgress < 0.5) statusLabel.textContent = '散落石片正在聚合';
-    else if (safeProgress < 0.84) statusLabel.textContent = '失落的面容正在补全';
-    else statusLabel.textContent = '修复正在收束';
+    if (safeProgress < 0.14) statusLabel.textContent = SCENE_CONFIG.copy.phaseWake;
+    else if (safeProgress < 0.5) statusLabel.textContent = SCENE_CONFIG.copy.phaseGather;
+    else if (safeProgress < 0.84) statusLabel.textContent = SCENE_CONFIG.copy.phaseRepair;
+    else statusLabel.textContent = SCENE_CONFIG.copy.phaseSettle;
     buttonLabel.textContent = `修复进行中 · ${percentage}%`;
-    restoreButton.setAttribute('aria-label', `石像修复进度 ${percentage}%`);
+    restoreButton.setAttribute('aria-label', `${SCENE_CONFIG.copy.title}修复进度 ${percentage}%`);
   } else {
     statusLabel.textContent = safeProgress > 0.3 ? '时间正在重新漫过石面' : '残缺形态正在显现';
     buttonLabel.textContent = `回溯进行中 · ${percentage}%`;
-    restoreButton.setAttribute('aria-label', `石像回溯进度 ${percentage}%`);
+    restoreButton.setAttribute('aria-label', `${SCENE_CONFIG.copy.title}回溯进度 ${percentage}%`);
   }
+}
+
+function getDamageWorldPosition(zOffset = 0) {
+  const subject = SCENE_CONFIG.layers.subject;
+  return new THREE.Vector3(
+    subject.position[0] + (subject.damageCenter[0] - 0.5) * subject.size[0],
+    subject.position[1] + (subject.damageCenter[1] - 0.5) * subject.size[1],
+    subject.position[2] + zOffset,
+  );
 }
 
 function toggleRestoration() {
@@ -155,9 +188,13 @@ function makeContactShadow() {
   texture.colorSpace = THREE.SRGBColorSpace;
   const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
   const sprite = new THREE.Sprite(material);
-  const [statueX, , statueZ] = SCENE_CONFIG.layers.statue.position;
-  sprite.position.set(statueX, -2.75, statueZ - 0.25);
-  sprite.scale.set(13.5, 3.1, 1);
+  const subject = SCENE_CONFIG.layers.subject;
+  sprite.position.set(
+    subject.position[0],
+    subject.position[1] - subject.size[1] / 2 + 0.6,
+    subject.position[2] - 0.25,
+  );
+  sprite.scale.set(subject.size[0] * 0.92, 3.1, 1);
   return sprite;
 }
 
@@ -223,8 +260,7 @@ function makeParticles() {
   });
 
   const particles = new THREE.Points(geometry, particleMaterial);
-  const [statueX, , statueZ] = SCENE_CONFIG.layers.statue.position;
-  particles.position.set(statueX, 5.6, statueZ + 0.7);
+  particles.position.copy(getDamageWorldPosition(0.7));
   return particles;
 }
 
@@ -243,14 +279,13 @@ function makeRepairFragments() {
   const group = new THREE.Group();
   const random = seededRandom(20260922);
   const geometry = new THREE.TetrahedronGeometry(0.22, 0);
-  const palette = ['#d5c29e', '#bda884', '#9d8a6e', '#e0d1b2'];
-  const [statueX, , statueZ] = SCENE_CONFIG.layers.statue.position;
-
-  group.position.set(statueX, 7.55, statueZ + 0.62);
+  const subject = SCENE_CONFIG.layers.subject;
+  const palette = subject.fragmentColors;
+  group.position.copy(getDamageWorldPosition(0.62));
 
   for (let index = 0; index < 16; index += 1) {
     const angle = random() * Math.PI * 2;
-    const radius = 1.9 + random() * 3.7;
+    const radius = 0.4 * subject.fragmentSpread + random() * 0.78 * subject.fragmentSpread;
     const start = new THREE.Vector3(
       Math.cos(angle) * radius,
       Math.sin(angle) * radius * 0.7 + (random() - 0.5) * 1.2,
@@ -335,15 +370,15 @@ async function init() {
   camera.lookAt(...SCENE_CONFIG.camera.lookAt);
 
   const loader = new THREE.TextureLoader();
-  const [backgroundTexture, pagodaTexture, terrainTexture, brokenTexture, intactTexture] = await Promise.all([
+  const [backgroundTexture, midgroundTexture, terrainTexture, brokenTexture, intactTexture] = await Promise.all([
     loader.loadAsync(SCENE_CONFIG.assets.background),
-    loader.loadAsync(SCENE_CONFIG.assets.pagoda),
+    loader.loadAsync(SCENE_CONFIG.assets.midground),
     loader.loadAsync(SCENE_CONFIG.assets.terrain),
-    loader.loadAsync(SCENE_CONFIG.assets.statueBroken),
-    loader.loadAsync(SCENE_CONFIG.assets.statueIntact),
+    loader.loadAsync(SCENE_CONFIG.assets.subjectBroken),
+    loader.loadAsync(SCENE_CONFIG.assets.subjectIntact),
   ]);
 
-  for (const texture of [backgroundTexture, pagodaTexture, terrainTexture, brokenTexture, intactTexture]) {
+  for (const texture of [backgroundTexture, midgroundTexture, terrainTexture, brokenTexture, intactTexture]) {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   }
@@ -373,19 +408,19 @@ async function init() {
   atmosphere.position.set(...atmosphereConfig.position);
   scene.add(atmosphere);
 
-  const pagodaConfig = SCENE_CONFIG.layers.pagoda;
-  const pagodaMaterial = createDistanceMaterial(pagodaTexture, {
+  const midgroundConfig = SCENE_CONFIG.layers.midground;
+  const midgroundMaterial = createDistanceMaterial(midgroundTexture, {
     paperColor,
-    nearDistance: pagodaConfig.dissolve[0],
-    farDistance: pagodaConfig.dissolve[1],
-    maxDissolve: pagodaConfig.dissolve[2],
+    nearDistance: midgroundConfig.dissolve[0],
+    farDistance: midgroundConfig.dissolve[1],
+    maxDissolve: midgroundConfig.dissolve[2],
     transparent: true,
-    opacity: pagodaConfig.opacity,
+    opacity: midgroundConfig.opacity,
   });
-  const pagoda = new THREE.Mesh(new THREE.PlaneGeometry(...pagodaConfig.size), pagodaMaterial);
-  pagoda.position.set(...pagodaConfig.position);
-  pagoda.renderOrder = 2;
-  scene.add(pagoda);
+  const midground = new THREE.Mesh(new THREE.PlaneGeometry(...midgroundConfig.size), midgroundMaterial);
+  midground.position.set(...midgroundConfig.position);
+  midground.renderOrder = 2;
+  scene.add(midground);
 
   const groundConfig = SCENE_CONFIG.layers.ground;
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(...groundConfig.size), createGroundMaterial());
@@ -395,25 +430,32 @@ async function init() {
 
   scene.add(makeContactShadow());
 
-  const statueConfig = SCENE_CONFIG.layers.statue;
-  const statueGeometry = new THREE.PlaneGeometry(...statueConfig.size);
+  const subjectConfig = SCENE_CONFIG.layers.subject;
+  const subjectGeometry = new THREE.PlaneGeometry(...subjectConfig.size);
   const brokenMaterial = createDistanceMaterial(brokenTexture, {
     paperColor,
-    nearDistance: statueConfig.dissolve[0],
-    farDistance: statueConfig.dissolve[1],
-    maxDissolve: statueConfig.dissolve[2],
+    nearDistance: subjectConfig.dissolve[0],
+    farDistance: subjectConfig.dissolve[1],
+    maxDissolve: subjectConfig.dissolve[2],
     transparent: true,
   });
-  statueMesh = new THREE.Mesh(statueGeometry, brokenMaterial);
-  statueMesh.position.set(...statueConfig.position);
-  statueMesh.renderOrder = 5;
-  scene.add(statueMesh);
+  subjectMesh = new THREE.Mesh(subjectGeometry, brokenMaterial);
+  subjectMesh.position.set(...subjectConfig.position);
+  subjectMesh.renderOrder = 5;
+  scene.add(subjectMesh);
 
-  repairMaterial = createRepairMaterial(intactTexture);
-  const restoredStatue = new THREE.Mesh(statueGeometry, repairMaterial);
-  restoredStatue.position.set(statueConfig.position[0], statueConfig.position[1], statueConfig.position[2] + 0.04);
-  restoredStatue.renderOrder = 6;
-  scene.add(restoredStatue);
+  repairMaterial = createRepairMaterial(intactTexture, {
+    damageCenter: subjectConfig.damageCenter,
+    damageRadius: subjectConfig.damageRadius,
+  });
+  const restoredSubject = new THREE.Mesh(subjectGeometry, repairMaterial);
+  restoredSubject.position.set(
+    subjectConfig.position[0],
+    subjectConfig.position[1],
+    subjectConfig.position[2] + 0.04,
+  );
+  restoredSubject.renderOrder = 6;
+  scene.add(restoredSubject);
 
   scene.add(makeParticles());
   scene.add(makeRepairFragments());
@@ -472,14 +514,14 @@ async function init() {
 
     pointer.set(pointerTarget.x, pointerTarget.y);
     raycaster.setFromCamera(pointer, camera);
-    const hovering = statueMesh ? raycaster.intersectObject(statueMesh).length > 0 : false;
+    const hovering = subjectMesh ? raycaster.intersectObject(subjectMesh).length > 0 : false;
     canvas.classList.toggle('is-interactive', hovering);
   });
 
   canvas.addEventListener('click', (event) => {
     pointer.set((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
-    if (statueMesh && raycaster.intersectObject(statueMesh).length > 0) toggleRestoration();
+    if (subjectMesh && raycaster.intersectObject(subjectMesh).length > 0) toggleRestoration();
   });
 
   window.addEventListener('resize', () => {
@@ -500,6 +542,7 @@ async function init() {
   window.setTimeout(() => loading.remove(), 850);
 }
 
+applySceneCopy();
 init().catch((error: unknown) => {
   console.error('场景初始化失败：', error);
   fallback.hidden = false;
