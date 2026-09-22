@@ -36,3 +36,8 @@ npm run preview
 - `statue-broken.png`：残缺主石像。
 - `statue-intact.png`：完整主石像。
 - `foreground-terrain.png`：透明前景岩石地形带。
+
+## 文档
+
+- [`docs/multi-scene-handoff-guide.md`](docs/multi-scene-handoff-guide.md)：完整实现记录、多场景协议、Agent 交接提示词和新场景素材模板。
+- [`docs/asset-generation-log.md`](docs/asset-generation-log.md)：所有生成图片的最终提示词、尺寸、用途、验收与接入状态。
