@@ -14,6 +14,15 @@ import { SCENE_CONFIG } from './sceneConfig';
 
 type RestorationState = 'broken' | 'restoring' | 'restored' | 'reversing';
 
+type RepairFragment = {
+  mesh: THREE.Mesh<THREE.TetrahedronGeometry, THREE.MeshBasicMaterial>;
+  start: THREE.Vector3;
+  target: THREE.Vector3;
+  spin: THREE.Vector3;
+  phase: number;
+  baseScale: number;
+};
+
 function requireElement<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
   if (!element) throw new Error(`页面缺少必要元素：${selector}`);
@@ -26,6 +35,7 @@ const fallback = requireElement<HTMLDivElement>('#fallback');
 const restoreButton = requireElement<HTMLButtonElement>('#restore');
 const buttonLabel = requireElement<HTMLSpanElement>('#button-label');
 const statusLabel = requireElement<HTMLParagraphElement>('#status');
+const completionNote = requireElement<HTMLParagraphElement>('.completion-note');
 
 const paperColor = new THREE.Color(SCENE_CONFIG.paperColor);
 const pointer = new THREE.Vector2();
@@ -35,6 +45,7 @@ const timer = new THREE.Timer();
 timer.connect(document);
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const focusPull = { value: 0 };
+const repairFragments: RepairFragment[] = [];
 
 let restorationState: RestorationState = 'broken';
 let statueMesh: THREE.Mesh | null = null;
@@ -55,7 +66,33 @@ function setCopy(state: RestorationState) {
   statusLabel.textContent = copy[state][0];
   buttonLabel.textContent = copy[state][1];
   restoreButton.disabled = state === 'restoring' || state === 'reversing';
+  restoreButton.setAttribute('aria-busy', String(state === 'restoring' || state === 'reversing'));
+  restoreButton.setAttribute('aria-pressed', String(state === 'restored'));
+  restoreButton.setAttribute('aria-label', copy[state][1]);
+  completionNote.setAttribute('aria-hidden', String(state !== 'restored'));
+  if (state === 'broken' || state === 'restored') {
+    document.documentElement.style.setProperty('--repair-progress', state === 'restored' ? '1' : '0');
+  }
   document.body.dataset.state = state;
+}
+
+function updateRestorationFeedback(progress: number, restoring: boolean) {
+  const safeProgress = THREE.MathUtils.clamp(progress, 0, 1);
+  const percentage = Math.round(safeProgress * 100);
+  document.documentElement.style.setProperty('--repair-progress', safeProgress.toFixed(4));
+
+  if (restoring) {
+    if (safeProgress < 0.14) statusLabel.textContent = '缺损边缘正在苏醒';
+    else if (safeProgress < 0.5) statusLabel.textContent = '散落石片正在聚合';
+    else if (safeProgress < 0.84) statusLabel.textContent = '失落的面容正在补全';
+    else statusLabel.textContent = '修复正在收束';
+    buttonLabel.textContent = `修复进行中 · ${percentage}%`;
+    restoreButton.setAttribute('aria-label', `石像修复进度 ${percentage}%`);
+  } else {
+    statusLabel.textContent = safeProgress > 0.3 ? '时间正在重新漫过石面' : '残缺形态正在显现';
+    buttonLabel.textContent = `回溯进行中 · ${percentage}%`;
+    restoreButton.setAttribute('aria-label', `石像回溯进度 ${percentage}%`);
+  }
 }
 
 function toggleRestoration() {
@@ -80,6 +117,7 @@ function toggleRestoration() {
     onUpdate: () => {
       if (particleMaterial && repairMaterial) {
         particleMaterial.uniforms.uProgress.value = repairMaterial.uniforms.uProgress.value;
+        updateRestorationFeedback(repairMaterial.uniforms.uProgress.value, restoring);
       }
     },
     onComplete: () => {
@@ -190,6 +228,86 @@ function makeParticles() {
   return particles;
 }
 
+function seededRandom(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function makeRepairFragments() {
+  const group = new THREE.Group();
+  const random = seededRandom(20260922);
+  const geometry = new THREE.TetrahedronGeometry(0.22, 0);
+  const palette = ['#d5c29e', '#bda884', '#9d8a6e', '#e0d1b2'];
+  const [statueX, , statueZ] = SCENE_CONFIG.layers.statue.position;
+
+  group.position.set(statueX, 7.55, statueZ + 0.62);
+
+  for (let index = 0; index < 16; index += 1) {
+    const angle = random() * Math.PI * 2;
+    const radius = 1.9 + random() * 3.7;
+    const start = new THREE.Vector3(
+      Math.cos(angle) * radius,
+      Math.sin(angle) * radius * 0.7 + (random() - 0.5) * 1.2,
+      (random() - 0.5) * 2.8,
+    );
+    const target = new THREE.Vector3(
+      (random() - 0.5) * 1.55,
+      (random() - 0.5) * 2.15,
+      (random() - 0.5) * 0.35,
+    );
+    const material = new THREE.MeshBasicMaterial({
+      color: palette[index % palette.length],
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    const baseScale = 0.45 + random() * 0.85;
+    mesh.position.copy(start);
+    mesh.scale.setScalar(baseScale);
+    mesh.rotation.set(random() * Math.PI, random() * Math.PI, random() * Math.PI);
+    mesh.renderOrder = 7;
+    mesh.visible = false;
+    group.add(mesh);
+    repairFragments.push({
+      mesh,
+      start,
+      target,
+      spin: new THREE.Vector3(0.45 + random(), 0.5 + random(), 0.35 + random()),
+      phase: random() * Math.PI * 2,
+      baseScale,
+    });
+  }
+
+  return group;
+}
+
+function updateRepairFragments(progress: number, time: number) {
+  const visible = progress > 0.012 && progress < 0.988;
+  const travel = THREE.MathUtils.smoothstep(progress, 0.08, 0.88);
+  const opacity = Math.sin(Math.PI * THREE.MathUtils.clamp(progress, 0, 1)) * 0.72;
+
+  for (const fragment of repairFragments) {
+    fragment.mesh.visible = visible;
+    if (!visible) continue;
+
+    fragment.mesh.position.lerpVectors(fragment.start, fragment.target, travel);
+    fragment.mesh.position.y += Math.sin(time * 2.2 + fragment.phase) * 0.1 * (1 - travel);
+    fragment.mesh.rotation.x = time * fragment.spin.x + fragment.phase;
+    fragment.mesh.rotation.y = time * fragment.spin.y + fragment.phase * 0.7;
+    fragment.mesh.rotation.z = time * fragment.spin.z;
+    fragment.mesh.scale.setScalar(fragment.baseScale * (1 - travel * 0.38));
+    fragment.mesh.material.opacity = opacity;
+  }
+}
+
 async function init() {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -298,6 +416,7 @@ async function init() {
   scene.add(restoredStatue);
 
   scene.add(makeParticles());
+  scene.add(makeRepairFragments());
 
   const terrainConfig = SCENE_CONFIG.layers.terrain;
   const terrainMaterial = createDistanceMaterial(terrainTexture, {
@@ -340,6 +459,7 @@ async function init() {
 
     if (repairMaterial) repairMaterial.uniforms.uTime.value = time;
     if (particleMaterial) particleMaterial.uniforms.uTime.value = time;
+    if (repairMaterial) updateRepairFragments(repairMaterial.uniforms.uProgress.value, time);
     paperPass.uniforms.uTime.value = time;
 
     composer.render();

@@ -1,4 +1,5 @@
 :root {
+  --repair-progress: 0;
   color: #353129;
   background: #eee6d2;
   font-family: "Songti SC", "STSong", "SimSun", serif;
@@ -144,6 +145,7 @@ h1 {
   background: transparent;
   cursor: pointer;
   transition: color 180ms ease, padding-left 220ms ease, border-color 180ms ease;
+  overflow: hidden;
 }
 
 #restore:hover:not(:disabled),
@@ -178,8 +180,30 @@ body[data-state="restored"] .button-mark {
 }
 
 #button-label {
+  position: relative;
+  z-index: 1;
   font-size: 13px;
   letter-spacing: 0.12em;
+}
+
+.repair-meter {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+}
+
+.repair-meter i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(var(--repair-progress));
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgba(143, 105, 67, 0.28), rgba(143, 84, 38, 0.9));
+  box-shadow: 0 0 9px rgba(160, 111, 62, 0.34);
+  transition: transform 90ms linear;
 }
 
 .hint {
@@ -188,6 +212,45 @@ body[data-state="restored"] .button-mark {
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 10px;
   letter-spacing: 0.08em;
+}
+
+.completion-note {
+  display: flex;
+  height: 0;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  overflow: hidden;
+  color: rgba(93, 66, 38, 0);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: height 360ms ease, margin 360ms ease, color 360ms ease, opacity 360ms ease, transform 360ms ease;
+}
+
+.completion-note span {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(143, 84, 38, 0.52);
+  color: #8f5426;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+body[data-state="restored"] .completion-note {
+  height: 36px;
+  margin-top: 18px;
+  color: rgba(93, 66, 38, 0.68);
+  opacity: 1;
+  transform: translateY(0);
+}
+
+body[data-state="restoring"] .interaction-panel,
+body[data-state="reversing"] .interaction-panel {
+  border-color: rgba(143, 84, 38, 0.32);
 }
 
 .scroll-cue {

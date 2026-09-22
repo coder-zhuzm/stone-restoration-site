@@ -23,11 +23,13 @@
         <aside class="interaction-panel" aria-live="polite">
           <span class="chapter">壹 · 残像</span>
           <p id="status">石像仍沉睡在残缺之中</p>
-          <button id="restore" type="button">
+          <button id="restore" type="button" aria-pressed="false" aria-busy="false">
             <span class="button-mark" aria-hidden="true"></span>
             <span id="button-label">触碰石像 · 开始修复</span>
+            <span class="repair-meter" aria-hidden="true"><i></i></span>
           </button>
           <p class="hint">也可以直接点击画面中的石像</p>
+          <p class="completion-note" aria-hidden="true"><span>完整</span> 修复完成</p>
         </aside>
 
         <div class="scroll-cue" aria-hidden="true">
