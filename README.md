@@ -66,4 +66,4 @@ npm run preview
 - [素材生成台账](docs/asset-generation-log.md)：已采用图片的逐张最终提示词、尺寸、用途、验收与接入状态；不保证逐像素复现。
 - [连续世界方案](docs/continuous-world-plan.md)：下一阶段“滚动穿过同一世界、依次抵达多个古迹”的设计与两站原型验收；**尚未实现**。
 
-项目目录外的 `stone-restoration-scene-plan.md`、`stone-restoration-scene-plan-zhu2.md` 与 `image-model-selection-and-production-workflow.md` 保留为历史计划和模型研究资料，不应替代上述当前文档。
+三份早期方案与模型研究已复制进 [历史文档归档](docs/archive/README.md)，使仓库能独立交接；桌面目录中的原件保留。归档内容不应替代上述当前文档。
