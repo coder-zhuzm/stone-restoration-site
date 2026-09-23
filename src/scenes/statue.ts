@@ -29,12 +29,6 @@ export const statueScene: RestorationSceneConfig = {
   },
   layers: {
     ...shared.environmentLayers,
-    midground: {
-      size: [7.2, 10.8],
-      position: [-4.9, 1.7, -43],
-      dissolve: [30, 105, 0.34],
-      opacity: 0.78,
-    },
     subject: {
       size: [14.6, 14.6],
       position: [4.6, 3.95, -20],

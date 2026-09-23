@@ -26,11 +26,12 @@ npm run preview
 
 - 26° 透视相机与真实 Z 轴分层。
 - `sceneConfig.ts` 负责场景注册，`src/scenes/` 分别保存三个场景参数；三个场景共用一套渲染器和动画循环。
-- 透明中景佛塔与前景岩石地形带。
+- 石像场景由古城远景、主石像和前景岩石地形带构图，不再叠加独立小塔；另两座塔保留各自的中景。
 - 滚动推进、指针阻尼视差。
 - 远景、中景与前景以不同幅度进行低频自动呼吸。
 - 自定义距离溶解 Shader，不使用 `THREE.Fog`。
-- 残缺态常驻弱尘埃，主体悬停时以贴图 Alpha 生成低强度暖色轮廓反馈；点击命中也按可见像素判断。
+- 静止的残缺态和完整态不显示漂浮石粉；石粉与碎片仅在修复／回退动画中出现。
+- 主体悬停时以贴图 Alpha 生成低强度暖色轮廓反馈；点击命中也按可见像素判断。
 - 同源残缺态／完整态的局部补全 Shader，缺损中心和半径按场景配置。
 - 石像和密檐塔使用 16 块场景配色的程序化三维碎片；佛塔使用八块贴图碎片，均与石粉共同完成可逆聚合动画。
 - 修复聚焦阶段相机轻推并将环境压暗约 8%，完成后恢复。
@@ -44,7 +45,7 @@ npm run preview
 ## 场景素材
 
 - `public/assets/background-zhu2-graded.png`：石像场景远景古城背景。
-- `public/assets/midground-pagoda.png`：正立面透明中景塔。
+- `public/assets/midground-pagoda.png`：此前用于石像场景的正立面小塔；目前留档，不加载到任何场景。
 - `public/assets/statue-broken.png`、`statue-intact.png`：石像残缺态与完整态。
 - `public/assets/scenes/pagoda/subject-broken.png`、`subject-intact.png`：佛塔残缺态与完整态。
 - `public/assets/scenes/pagoda/background.png`：佛塔专属山谷与寺院遗址远景。

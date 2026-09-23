@@ -77,12 +77,12 @@ Edit this exact transparent intact statue into its damaged starting state. Keep 
 ### ASSET-004 · 中景古塔
 
 - 最终文件：`public/assets/midground-pagoda.png`
-- 场景：`statue`
-- 用途：连接主石像与远景古城的中景尺度层。
+- 场景：原 `statue`，当前不在任何场景加载。
+- 用途：曾用于连接主石像与远景古城的中景尺度层；现因与石像主题不协调而移出画面。
 - 类型：新生成，`zhu2` 调整版仅作为风格参考。
 - 尺寸：`1024×1536`。
 - Alpha：是。
-- 状态：已进入代码。
+- 状态：素材留档，未删除；当前场景配置不引用。
 - 验收：单塔、正立面、透明背景、无地面和文字。
 - 限制：只作为配景，不能充当可修复佛塔的完整母版。
 

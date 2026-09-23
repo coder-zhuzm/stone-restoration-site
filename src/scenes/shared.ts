@@ -13,7 +13,6 @@ export const shared = {
   },
   environmentAssets: {
     background: '/assets/background-zhu2-graded.png',
-    midground: '/assets/midground-pagoda.png',
     terrain: '/assets/foreground-terrain.png',
   },
   environmentLayers: {

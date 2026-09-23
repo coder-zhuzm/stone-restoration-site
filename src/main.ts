@@ -67,7 +67,6 @@ let subjectAlphaMasks: { broken: AlphaMask; intact: AlphaMask } | null = null;
 let repairMaterial: THREE.ShaderMaterial | null = null;
 let particleMaterial: THREE.ShaderMaterial | null = null;
 let hoverStrengthTarget = 0;
-let idleDustTarget = 0.09;
 let pageVisible = !document.hidden;
 let renderer: THREE.WebGLRenderer;
 let composer: EffectComposer;
@@ -75,6 +74,9 @@ let camera: THREE.PerspectiveCamera;
 
 function validateSceneConfig(config: RestorationSceneConfig) {
   const subject = config.layers.subject;
+  if (Boolean(config.assets.midground) !== Boolean(config.layers.midground)) {
+    throw new Error(`场景 ${config.id} 的中景素材与中景图层必须同时配置或同时省略。`);
+  }
   if (subject.damageCenter.some((value) => !Number.isFinite(value) || value < 0 || value > 1)) {
     throw new Error(`场景 ${config.id} 的缺损中心必须在 0–1 之间。`);
   }
@@ -173,7 +175,6 @@ function setCopy(state: RestorationState) {
   restoreButton.setAttribute('aria-pressed', String(state === 'restored'));
   restoreButton.setAttribute('aria-label', copy[state][1]);
   completionNote.setAttribute('aria-hidden', String(state !== 'restored'));
-  idleDustTarget = state === 'broken' ? 0.09 : 0;
   if (state === 'restoring' || state === 'reversing') hoverStrengthTarget = 0;
   if (state === 'broken' || state === 'restored') {
     document.documentElement.style.setProperty('--repair-progress', state === 'restored' ? '1' : '0');
@@ -319,7 +320,6 @@ function makeParticles() {
     uniforms: {
       uTime: { value: 0 },
       uProgress: { value: 0 },
-      uIdleStrength: { value: 0.09 },
       uColor: { value: new THREE.Color('#b49a70') },
     },
     vertexShader: `
@@ -327,7 +327,6 @@ function makeParticles() {
       attribute float aSize;
       uniform float uTime;
       uniform float uProgress;
-      uniform float uIdleStrength;
       varying float vAlpha;
       void main() {
         float wave = sin(uTime * 2.1 + aOffset.x * 1.7) * 0.13;
@@ -336,9 +335,7 @@ function makeParticles() {
         vec4 mvPosition = modelViewMatrix * vec4(position + drift, 1.0);
         gl_PointSize = aSize * (230.0 / -mvPosition.z);
         gl_Position = projectionMatrix * mvPosition;
-        float repairAlpha = sin(3.14159 * uProgress) * 0.7;
-        float idlePulse = uIdleStrength * (0.64 + 0.36 * sin(uTime * 0.85 + aOffset.y));
-        vAlpha = max(repairAlpha, idlePulse);
+        vAlpha = sin(3.14159 * uProgress) * 0.7;
       }
     `,
     fragmentShader: `
@@ -359,6 +356,7 @@ function makeParticles() {
 
   const particles = new THREE.Points(geometry, particleMaterial);
   particles.position.copy(getDamageWorldPosition(0.7));
+  particles.visible = false;
   return particles;
 }
 
@@ -499,9 +497,12 @@ async function init() {
   const fragmentTexturePromise = fragmentAtlas
     ? loadTexture(loader, fragmentAtlas.path)
     : Promise.resolve(null);
+  const midgroundTexturePromise = SCENE_CONFIG.assets.midground
+    ? loadTexture(loader, SCENE_CONFIG.assets.midground)
+    : Promise.resolve(null);
   const [backgroundTexture, midgroundTexture, terrainTexture, brokenTexture, intactTexture, fragmentTexture] = await Promise.all([
     loadTexture(loader, SCENE_CONFIG.assets.background),
-    loadTexture(loader, SCENE_CONFIG.assets.midground),
+    midgroundTexturePromise,
     loadTexture(loader, SCENE_CONFIG.assets.terrain),
     loadTexture(loader, SCENE_CONFIG.assets.subjectBroken),
     loadTexture(loader, SCENE_CONFIG.assets.subjectIntact),
@@ -550,18 +551,22 @@ async function init() {
   scene.add(atmosphere);
 
   const midgroundConfig = SCENE_CONFIG.layers.midground;
-  const midgroundMaterial = createDistanceMaterial(midgroundTexture, {
-    paperColor,
-    nearDistance: midgroundConfig.dissolve[0],
-    farDistance: midgroundConfig.dissolve[1],
-    maxDissolve: midgroundConfig.dissolve[2],
-    transparent: true,
-    opacity: midgroundConfig.opacity,
-  });
-  const midground = new THREE.Mesh(new THREE.PlaneGeometry(...midgroundConfig.size), midgroundMaterial);
-  midground.position.set(...midgroundConfig.position);
-  midground.renderOrder = 2;
-  scene.add(midground);
+  let midground: THREE.Mesh | null = null;
+  let midgroundMaterial: THREE.ShaderMaterial | null = null;
+  if (midgroundConfig && midgroundTexture) {
+    midgroundMaterial = createDistanceMaterial(midgroundTexture, {
+      paperColor,
+      nearDistance: midgroundConfig.dissolve[0],
+      farDistance: midgroundConfig.dissolve[1],
+      maxDissolve: midgroundConfig.dissolve[2],
+      transparent: true,
+      opacity: midgroundConfig.opacity,
+    });
+    midground = new THREE.Mesh(new THREE.PlaneGeometry(...midgroundConfig.size), midgroundMaterial);
+    midground.position.set(...midgroundConfig.position);
+    midground.renderOrder = 2;
+    scene.add(midground);
+  }
 
   const groundConfig = SCENE_CONFIG.layers.ground;
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(...groundConfig.size), createGroundMaterial());
@@ -610,7 +615,8 @@ async function init() {
   restoredSubject.renderOrder = 6;
   scene.add(restoredSubject);
 
-  scene.add(makeParticles());
+  const particles = makeParticles();
+  scene.add(particles);
   scene.add(makeRepairFragments(fragmentTexture, fragmentAtlas));
 
   const terrainConfig = SCENE_CONFIG.layers.terrain;
@@ -627,9 +633,10 @@ async function init() {
   terrain.renderOrder = 8;
   scene.add(terrain);
 
-  const environmentMaterials = [backgroundMaterial, midgroundMaterial, terrainMaterial];
+  const environmentMaterials = [backgroundMaterial, terrainMaterial];
+  if (midgroundMaterial) environmentMaterials.push(midgroundMaterial);
   const backgroundBase = background.position.clone();
-  const midgroundBase = midground.position.clone();
+  const midgroundBase = midground?.position.clone();
   const terrainBase = terrain.position.clone();
 
   composer = new EffectComposer(renderer);
@@ -663,8 +670,10 @@ async function init() {
 
     if (!reducedMotion) {
       background.position.x = backgroundBase.x + Math.sin(time * 0.2) * 0.025;
-      midground.position.x = midgroundBase.x + Math.sin(time * 0.29 + 0.7) * 0.09;
-      midground.position.y = midgroundBase.y + Math.sin(time * 0.23 + 1.4) * 0.025;
+      if (midground && midgroundBase) {
+        midground.position.x = midgroundBase.x + Math.sin(time * 0.29 + 0.7) * 0.09;
+        midground.position.y = midgroundBase.y + Math.sin(time * 0.23 + 1.4) * 0.025;
+      }
       terrain.position.x = terrainBase.x - Math.sin(time * 0.34 + 1.6) * 0.14;
       terrain.position.y = terrainBase.y + Math.sin(time * 0.27 + 0.4) * 0.035;
     }
@@ -684,15 +693,12 @@ async function init() {
     }
 
     if (repairMaterial) repairMaterial.uniforms.uTime.value = time;
-    if (particleMaterial) {
-      particleMaterial.uniforms.uTime.value = time;
-      particleMaterial.uniforms.uIdleStrength.value = THREE.MathUtils.lerp(
-        particleMaterial.uniforms.uIdleStrength.value,
-        idleDustTarget,
-        reducedMotion ? 1 : 0.045,
-      );
+    if (particleMaterial) particleMaterial.uniforms.uTime.value = time;
+    if (repairMaterial) {
+      const progress = repairMaterial.uniforms.uProgress.value;
+      particles.visible = progress > 0.012 && progress < 0.988;
+      updateRepairFragments(progress, time);
     }
-    if (repairMaterial) updateRepairFragments(repairMaterial.uniforms.uProgress.value, time);
     paperPass.uniforms.uTime.value = time;
 
     composer.render();

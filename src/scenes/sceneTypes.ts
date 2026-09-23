@@ -36,7 +36,7 @@ export type RestorationSceneConfig = {
   };
   assets: {
     background: string;
-    midground: string;
+    midground?: string;
     terrain: string;
     subjectBroken: string;
     subjectIntact: string;
@@ -45,7 +45,7 @@ export type RestorationSceneConfig = {
   layers: {
     background: { size: Vec2; position: Vec3; dissolve: Vec3 };
     atmosphere: { size: Vec2; position: Vec3; opacity: number };
-    midground: { size: Vec2; position: Vec3; dissolve: Vec3; opacity: number };
+    midground?: { size: Vec2; position: Vec3; dissolve: Vec3; opacity: number };
     ground: { size: Vec2; position: Vec3 };
     subject: {
       size: Vec2;
