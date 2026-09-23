@@ -59,5 +59,11 @@ npm run preview
 
 ## 文档
 
-- [`docs/multi-scene-handoff-guide.md`](docs/multi-scene-handoff-guide.md)：完整实现记录、多场景协议、Agent 交接提示词和新场景素材模板。
-- [`docs/asset-generation-log.md`](docs/asset-generation-log.md)：所有生成图片的最终提示词、尺寸、用途、验收与接入状态。
+建议先分清“当前实现”和“下一阶段方案”：
+
+- [多场景交接指南](docs/multi-scene-handoff-guide.md)：当前三个独立场景的真实实现、配置协议和代码 Agent 交接说明。
+- [素材生产指南](docs/asset-production-guide.md)：可迁移到其他古迹的改图顺序、提示词骨架和素材硬验收。
+- [素材生成台账](docs/asset-generation-log.md)：已采用图片的逐张最终提示词、尺寸、用途、验收与接入状态；不保证逐像素复现。
+- [连续世界方案](docs/continuous-world-plan.md)：下一阶段“滚动穿过同一世界、依次抵达多个古迹”的设计与两站原型验收；**尚未实现**。
+
+项目目录外的 `stone-restoration-scene-plan.md`、`stone-restoration-scene-plan-zhu2.md` 与 `image-model-selection-and-production-workflow.md` 保留为历史计划和模型研究资料，不应替代上述当前文档。
