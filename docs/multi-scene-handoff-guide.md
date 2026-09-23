@@ -32,8 +32,9 @@
 11. 佛塔章节拥有独立的山谷远景、寺院残墙中景与砖瓦前景。
 12. 佛塔使用 `2×4` 图集生成八块贴图碎片，石像保留程序化三维石片。
 13. 密檐砖塔拥有同源双状态、黄土荒原远景、石窟崖壁中景和砖石前景，使用程序化砖石碎片。
-14. 三个场景共用低频环境呼吸、残缺态弱尘埃、悬停暖光、聚焦压暗和结果文案。
-15. 页面进入后台时停止非必要帧渲染，WebGL 失败时显示当前场景远景作为静态降级画面。
+14. 三个场景共用低频环境呼吸、残缺态弱尘埃、基于主物件 Alpha 的悬停暖色轮廓与像素级点击命中、聚焦压暗和结果文案。
+15. 页面进入后台时停止非必要帧渲染并暂停 GSAP 时间轴，WebGL 失败时显示当前场景远景作为静态降级画面。
+16. 三个场景的配置已拆分成独立模块；加载时校验缺损参数、图集行列数量和主物件双状态尺寸。
 
 “已完成”只表示素材已经接入且生产构建通过，不代表浏览器视觉验收已经通过；最终画面由用户自行预览确认。
 
@@ -89,8 +90,11 @@
 | 文件 | 责任 |
 |---|---|
 | `src/main.ts` | 场景初始化、贴图加载、相机、滚动、指针、修复状态机、粒子和石片 |
-| `src/sceneConfig.ts` | 所有素材路径、位置、尺寸、深度、透明度和相机参数 |
-| `src/shaders.ts` | 距离溶解、局部修复、地面和屏幕空间纸纹 Shader |
+| `src/sceneConfig.ts` | 场景注册表与 URL 入口选择 |
+| `src/scenes/sceneTypes.ts` | 场景配置的 TypeScript 协议 |
+| `src/scenes/shared.ts` | 相机、纸色及环境层的共用默认参数 |
+| `src/scenes/statue.ts`、`pagoda.ts`、`brickPagoda.ts` | 三个场景各自的素材路径、位置、尺寸、深度、缺损与文案参数 |
+| `src/shaders.ts` | 距离溶解、局部修复、悬停轮廓、地面和屏幕空间纸纹 Shader |
 | `src/style.css` | PC UI、修复进度、完成标记、加载层和可访问状态 |
 | `index.html` | 场景 Canvas 与 UI 语义结构 |
 | `public/assets/` | 页面实际消费的最终素材 |
@@ -151,7 +155,7 @@
 - 中景、地面和前景素材。
 - 修复时间和完成后的视觉反馈。
 
-## 7. 多场景目标目录
+## 7. 当前多场景目录
 
 ```text
 stone-restoration-site/
@@ -160,90 +164,54 @@ stone-restoration-site/
 │   └── asset-generation-log.md
 ├── public/
 │   └── assets/
-│       ├── shared/
-│       │   ├── paper-texture.png          # 可选；当前使用程序化纸纹
-│       │   └── common-terrain.png
+│       ├── background-zhu2-graded.png
+│       ├── statue-broken.png / statue-intact.png
+│       ├── midground-pagoda.png / foreground-terrain.png
 │       └── scenes/
-│           ├── statue/
-│           │   ├── background.png
-│           │   ├── subject-broken.png
-│           │   ├── subject-intact.png
-│           │   ├── midground.png
-│           │   └── foreground.png
-│           └── pagoda/
-│               ├── background.png
-│               ├── subject-broken.png
-│               ├── subject-intact.png
-│               ├── fragments.png         # 可选
-│               ├── midground.png
-│               └── foreground.png
+│           ├── pagoda/                   # 佛塔双状态、环境和碎片图集
+│           └── brick-pagoda/             # 密檐塔双状态和环境
 └── src/
-    ├── core/
-    │   ├── RestorationScene.ts
-    │   ├── materials.ts
-    │   ├── particles.ts
-    │   └── postprocessing.ts
     ├── scenes/
+    │   ├── sceneTypes.ts
+    │   ├── shared.ts
     │   ├── statue.ts
-    │   └── pagoda.ts
-    ├── sceneRegistry.ts
+    │   ├── pagoda.ts
+    │   └── brickPagoda.ts
+    ├── sceneConfig.ts                 # 注册表与场景选择
+    ├── shaders.ts
     ├── main.ts
     └── style.css
 ```
 
-迁移时不得一次性大范围重写。先建立场景协议，再将当前石像场景迁移为第一个实现，确认构建通过后再接入佛塔场景。
-
-当前版本采用同等能力的轻量结构：`src/sceneConfig.ts` 同时保存类型、注册表和三个场景配置，`src/main.ts` 只保留一套公共循环。场景继续增加到 4 个以上时，再按上面的目标目录拆分为独立文件，避免提前制造多层抽象。
+当前版本保留一套公共渲染与动画循环，并将配置协议、共享默认值、场景实例和注册表分离。新增场景只需在 `src/scenes/` 添加一个配置文件，并在类型与注册表中登记；不复制 `src/main.ts`。
 
 ## 8. 场景配置协议
 
-其他 Agent 新增场景时，必须提供与以下结构等价的配置：
+其他 Agent 新增场景时，应直接实现 `src/scenes/sceneTypes.ts` 中的 `RestorationSceneConfig`，不要另建一套接口。关键配置关系如下；完整字段以代码中的类型为准：
 
 ```ts
-export type RestorationSceneDefinition = {
-  id: string;
-  copy: {
-    eyebrow: string;
-    title: string;
-    lead: string;
-    chapter: string;
-    broken: string;
-    restoring: string;
-    restored: string;
-  };
+const newScene: RestorationSceneConfig = {
+  id: 'new-scene', // 同时加入 SceneId 和 SCENE_REGISTRY
+  paperColor: '#...',
+  copy: { /* 页面文案及四阶段状态文案 */ },
+  camera: { fov: 26, /* 位置、观察点、滚动与指针幅度 */ },
   assets: {
-    background: string;
-    subjectBroken: string;
-    subjectIntact: string;
-    midground?: string;
-    foreground?: string;
-  };
-  camera: {
-    fov: 26;
-    position: [number, number, number];
-    lookAt: [number, number, number];
-    scrollTravel: number;
-  };
-  subject: {
-    size: [number, number];
-    position: [number, number, number];
-    damageCenter: [number, number];
-    damageRadius: number;
-  };
-  layers: Array<{
-    id: string;
-    asset: string;
-    size: [number, number];
-    position: [number, number, number];
-    opacity: number;
-    maxDissolve: number;
-  }>;
-  restoration: {
-    forwardDuration: number;
-    reverseDuration: number;
-    fragmentCount: number;
-    fragmentColor: string[];
-  };
+    background: '/assets/scenes/new-scene/background.png',
+    midground: '/assets/scenes/new-scene/midground.png',
+    terrain: '/assets/scenes/new-scene/foreground.png',
+    subjectBroken: '/assets/scenes/new-scene/subject-broken.png',
+    subjectIntact: '/assets/scenes/new-scene/subject-intact.png',
+    // fragments: { path: '/assets/scenes/new-scene/fragments.png', columns: 2, rows: 4, count: 8 },
+  },
+  layers: {
+    background: { /* size, position, dissolve */ },
+    atmosphere: { /* size, position, opacity */ },
+    midground: { /* size, position, dissolve, opacity */ },
+    ground: { /* size, position */ },
+    subject: { /* size, position, dissolve, damageCenter, damageRadius, fragmentSpread, fragmentColors */ },
+    terrain: { /* size, position, dissolve, opacity */ },
+  },
+  restoration: { forwardDuration: 3.7, reverseDuration: 2.2 },
 };
 ```
 
@@ -355,11 +323,11 @@ Constraints: no dominant foreground object, no text, watermark, logo, border or 
 将以下内容与本文档一起交给新的开发 Agent：
 
 ```text
-请在现有 stone-restoration-site 工程中新增一个配置驱动的修复场景，不要复制渲染器或动画循环。先阅读 docs/multi-scene-handoff-guide.md、docs/asset-generation-log.md、src/main.ts、src/sceneConfig.ts 和 src/shaders.ts。
+请在现有 stone-restoration-site 工程中新增一个配置驱动的修复场景，不要复制渲染器或动画循环。先阅读 docs/multi-scene-handoff-guide.md、docs/asset-generation-log.md、src/main.ts、src/sceneConfig.ts、src/scenes/sceneTypes.ts、src/scenes/shared.ts 和 src/shaders.ts。
 
 保持以下约束：PC only；Three.js + TypeScript + GSAP；26° FOV；不使用 THREE.Fog；纸纹固定在屏幕空间；完整态与残缺态使用完全相同的 PlaneGeometry、位置和缩放；修复只影响配置指定的缺损区域；所有透明面片 depthWrite=false；不得修改现有石像场景的视觉参数。
 
-先建立 RestorationSceneDefinition 和 sceneRegistry，再把现有石像场景迁移为第一个定义，构建通过后接入新场景。每次只迁移一个模块，运行 npm run build 并提交可回滚的 Git 版本。不要实施移动端，不要部署，不要覆盖原始图片。
+使用现有 RestorationSceneConfig 协议，在 src/scenes/ 中新增独立场景配置，并在 SceneId 类型和 src/sceneConfig.ts 注册表登记。图集碎片若有，必须填写 path、columns、rows、count，且数量与网格容量一致。加载前确认双状态图片尺寸相同。运行 npm run build 并提交可回滚的 Git 版本。不要实施移动端，不要部署，不要覆盖原始图片。
 ```
 
 ## 14. 生图 Agent 交接提示词
@@ -440,7 +408,7 @@ Constraints: no dominant foreground object, no text, watermark, logo, border or 
 1. 由用户预览密檐塔场景并反馈构图、遮挡和修复范围。
 2. 根据实际画面微调密檐塔尺寸、接地点、缺损中心和缺损半径。
 3. 如需密檐塔贴图碎片，使用能够可靠输出 Alpha 的模型逐件生成；当前程序化碎片可继续使用。
-4. 新增第四个场景前，将 `sceneConfig.ts` 拆分为注册表与独立场景模块。
+4. 根据用户的视觉反馈校准三个场景的距离溶解强度；新增第四个场景时沿用已拆分的配置模块和注册表。
 
 ## 19. 维护规则
 

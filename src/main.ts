@@ -7,12 +7,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import {
   createDistanceMaterial,
   createGroundMaterial,
+  createHoverOutlineMaterial,
   createRepairMaterial,
   paperPassShader,
 } from './shaders';
-import { ACTIVE_SCENE_ID, SCENE_CONFIG } from './sceneConfig';
+import { ACTIVE_SCENE_ID, SCENE_CONFIG, type RestorationSceneConfig } from './sceneConfig';
 
 type RestorationState = 'broken' | 'restoring' | 'restored' | 'reversing';
+type FragmentAtlas = NonNullable<RestorationSceneConfig['assets']['fragments']>;
+type AlphaMask = { width: number; height: number; pixels: Uint8Array; flipY: boolean };
 
 type RepairFragment = {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
@@ -58,6 +61,9 @@ const repairFragments: RepairFragment[] = [];
 let restorationState: RestorationState = 'broken';
 let subjectMesh: THREE.Mesh | null = null;
 let subjectMaterial: THREE.ShaderMaterial | null = null;
+let hoverOutlineMaterial: THREE.ShaderMaterial | null = null;
+let subjectTextures: { broken: THREE.Texture; intact: THREE.Texture } | null = null;
+let subjectAlphaMasks: { broken: AlphaMask; intact: AlphaMask } | null = null;
 let repairMaterial: THREE.ShaderMaterial | null = null;
 let particleMaterial: THREE.ShaderMaterial | null = null;
 let hoverStrengthTarget = 0;
@@ -66,6 +72,72 @@ let pageVisible = !document.hidden;
 let renderer: THREE.WebGLRenderer;
 let composer: EffectComposer;
 let camera: THREE.PerspectiveCamera;
+
+function validateSceneConfig(config: RestorationSceneConfig) {
+  const subject = config.layers.subject;
+  if (subject.damageCenter.some((value) => !Number.isFinite(value) || value < 0 || value > 1)) {
+    throw new Error(`场景 ${config.id} 的缺损中心必须在 0–1 之间。`);
+  }
+  if (subject.damageRadius.some((value) => !Number.isFinite(value) || value <= 0 || value > 1)) {
+    throw new Error(`场景 ${config.id} 的缺损半径必须大于 0 且不超过 1。`);
+  }
+}
+
+function getValidFragmentAtlas(config: RestorationSceneConfig): FragmentAtlas | null {
+  const atlas = config.assets.fragments;
+  if (!atlas) return null;
+  if (!Number.isInteger(atlas.columns) || !Number.isInteger(atlas.rows) ||
+    !Number.isInteger(atlas.count) || atlas.columns < 1 || atlas.rows < 1 ||
+    atlas.count < 1 || atlas.count !== atlas.columns * atlas.rows) {
+    console.warn(`场景 ${config.id} 的碎片图集行列数与数量不匹配，已使用程序化碎片。`);
+    return null;
+  }
+  return atlas;
+}
+
+async function loadTexture(loader: THREE.TextureLoader, path: string) {
+  try {
+    return await loader.loadAsync(path);
+  } catch (cause) {
+    throw new Error(`场景 ${ACTIVE_SCENE_ID} 无法加载素材：${path}`, { cause });
+  }
+}
+
+function assertMatchingSubjectSize(broken: THREE.Texture, intact: THREE.Texture) {
+  const brokenImage = broken.image as { width: number; height: number };
+  const intactImage = intact.image as { width: number; height: number };
+  if (brokenImage.width !== intactImage.width || brokenImage.height !== intactImage.height) {
+    throw new Error(
+      `场景 ${ACTIVE_SCENE_ID} 的残缺态与完整态尺寸不一致：` +
+      `${brokenImage.width}×${brokenImage.height} / ${intactImage.width}×${intactImage.height}。`,
+    );
+  }
+}
+
+function readAlphaMask(texture: THREE.Texture): AlphaMask {
+  const image = texture.image as HTMLImageElement;
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error(`场景 ${ACTIVE_SCENE_ID} 无法读取主物件透明通道。`);
+  context.drawImage(image, 0, 0);
+  const rgba = context.getImageData(0, 0, image.width, image.height).data;
+  const pixels = new Uint8Array(image.width * image.height);
+  for (let index = 0; index < pixels.length; index++) pixels[index] = rgba[index * 4 + 3];
+  return { width: image.width, height: image.height, pixels, flipY: texture.flipY };
+}
+
+function isSubjectHit(): boolean {
+  if (!subjectMesh || !subjectAlphaMasks) return false;
+  const intersection = raycaster.intersectObject(subjectMesh)[0];
+  if (!intersection?.uv) return false;
+  const mask = restorationState === 'restored' ? subjectAlphaMasks.intact : subjectAlphaMasks.broken;
+  const x = THREE.MathUtils.clamp(Math.floor(intersection.uv.x * mask.width), 0, mask.width - 1);
+  const imageY = mask.flipY ? 1 - intersection.uv.y : intersection.uv.y;
+  const y = THREE.MathUtils.clamp(Math.floor(imageY * mask.height), 0, mask.height - 1);
+  return mask.pixels[y * mask.width + x] >= 13;
+}
 
 function applySceneCopy() {
   const { copy } = SCENE_CONFIG;
@@ -164,6 +236,9 @@ function toggleRestoration() {
     },
     onComplete: () => {
       restorationState = restoring ? 'restored' : 'broken';
+      if (hoverOutlineMaterial && subjectTextures) {
+        hoverOutlineMaterial.uniforms.uMap.value = restoring ? subjectTextures.intact : subjectTextures.broken;
+      }
       setCopy(restorationState);
       if (restoring) {
         gsap.to(focusDim, { value: 0, duration: reducedMotion ? 0.01 : 0.5, ease: 'sine.out' });
@@ -298,13 +373,13 @@ function seededRandom(seed: number) {
   };
 }
 
-function makeRepairFragments(atlasTexture: THREE.Texture | null) {
+function makeRepairFragments(atlasTexture: THREE.Texture | null, atlas: FragmentAtlas | null) {
   const group = new THREE.Group();
   const random = seededRandom(20260922);
   const subject = SCENE_CONFIG.layers.subject;
   const palette = subject.fragmentColors;
   group.position.copy(getDamageWorldPosition(0.62));
-  const fragmentCount = atlasTexture ? 8 : 16;
+  const fragmentCount = atlasTexture && atlas ? atlas.count : 16;
 
   for (let index = 0; index < fragmentCount; index += 1) {
     const angle = random() * Math.PI * 2;
@@ -319,12 +394,14 @@ function makeRepairFragments(atlasTexture: THREE.Texture | null) {
       (random() - 0.5) * 2.15,
       (random() - 0.5) * 0.35,
     );
-    const fragmentMap = atlasTexture?.clone() ?? null;
-    if (fragmentMap) {
-      const column = index % 2;
-      const row = Math.floor(index / 2);
-      fragmentMap.repeat.set(0.5, 0.25);
-      fragmentMap.offset.set(column * 0.5, 1 - (row + 1) * 0.25);
+    const fragmentMap = atlasTexture && atlas ? atlasTexture.clone() : null;
+    if (fragmentMap && atlas) {
+      const column = index % atlas.columns;
+      const row = Math.floor(index / atlas.columns);
+      const cellWidth = 1 / atlas.columns;
+      const cellHeight = 1 / atlas.rows;
+      fragmentMap.repeat.set(cellWidth, cellHeight);
+      fragmentMap.offset.set(column * cellWidth, 1 - (row + 1) * cellHeight);
       fragmentMap.needsUpdate = true;
     }
     const material = new THREE.MeshBasicMaterial({
@@ -391,6 +468,8 @@ function updateRepairFragments(progress: number, time: number) {
 }
 
 async function init() {
+  validateSceneConfig(SCENE_CONFIG);
+  const fragmentAtlas = getValidFragmentAtlas(SCENE_CONFIG);
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   } catch (error) {
@@ -417,17 +496,20 @@ async function init() {
   camera.lookAt(...SCENE_CONFIG.camera.lookAt);
 
   const loader = new THREE.TextureLoader();
-  const fragmentTexturePromise = SCENE_CONFIG.assets.fragments
-    ? loader.loadAsync(SCENE_CONFIG.assets.fragments)
+  const fragmentTexturePromise = fragmentAtlas
+    ? loadTexture(loader, fragmentAtlas.path)
     : Promise.resolve(null);
   const [backgroundTexture, midgroundTexture, terrainTexture, brokenTexture, intactTexture, fragmentTexture] = await Promise.all([
-    loader.loadAsync(SCENE_CONFIG.assets.background),
-    loader.loadAsync(SCENE_CONFIG.assets.midground),
-    loader.loadAsync(SCENE_CONFIG.assets.terrain),
-    loader.loadAsync(SCENE_CONFIG.assets.subjectBroken),
-    loader.loadAsync(SCENE_CONFIG.assets.subjectIntact),
+    loadTexture(loader, SCENE_CONFIG.assets.background),
+    loadTexture(loader, SCENE_CONFIG.assets.midground),
+    loadTexture(loader, SCENE_CONFIG.assets.terrain),
+    loadTexture(loader, SCENE_CONFIG.assets.subjectBroken),
+    loadTexture(loader, SCENE_CONFIG.assets.subjectIntact),
     fragmentTexturePromise,
   ]);
+  assertMatchingSubjectSize(brokenTexture, intactTexture);
+  subjectTextures = { broken: brokenTexture, intact: intactTexture };
+  subjectAlphaMasks = { broken: readAlphaMask(brokenTexture), intact: readAlphaMask(intactTexture) };
 
   for (const texture of [
     backgroundTexture,
@@ -504,6 +586,17 @@ async function init() {
   subjectMesh.renderOrder = 5;
   scene.add(subjectMesh);
 
+  hoverOutlineMaterial = createHoverOutlineMaterial(brokenTexture);
+  const hoverOutline = new THREE.Mesh(subjectGeometry, hoverOutlineMaterial);
+  hoverOutline.position.set(
+    subjectConfig.position[0],
+    subjectConfig.position[1],
+    subjectConfig.position[2] + 0.02,
+  );
+  hoverOutline.renderOrder = 5.5;
+  hoverOutline.visible = false;
+  scene.add(hoverOutline);
+
   repairMaterial = createRepairMaterial(intactTexture, {
     damageCenter: subjectConfig.damageCenter,
     damageRadius: subjectConfig.damageRadius,
@@ -518,7 +611,7 @@ async function init() {
   scene.add(restoredSubject);
 
   scene.add(makeParticles());
-  scene.add(makeRepairFragments(fragmentTexture));
+  scene.add(makeRepairFragments(fragmentTexture, fragmentAtlas));
 
   const terrainConfig = SCENE_CONFIG.layers.terrain;
   const terrainMaterial = createDistanceMaterial(terrainTexture, {
@@ -579,12 +672,15 @@ async function init() {
     for (const material of environmentMaterials) {
       material.uniforms.uFocusDim.value = focusDim.value;
     }
-    if (subjectMaterial) {
-      subjectMaterial.uniforms.uHover.value = THREE.MathUtils.lerp(
-        subjectMaterial.uniforms.uHover.value,
+    if (subjectMaterial && hoverOutlineMaterial) {
+      const strength = THREE.MathUtils.lerp(
+        hoverOutlineMaterial.uniforms.uStrength.value,
         hoverStrengthTarget,
         reducedMotion ? 1 : 0.09,
       );
+      subjectMaterial.uniforms.uHover.value = strength;
+      hoverOutlineMaterial.uniforms.uStrength.value = strength;
+      hoverOutline.visible = strength > 0.001;
     }
 
     if (repairMaterial) repairMaterial.uniforms.uTime.value = time;
@@ -609,9 +705,11 @@ async function init() {
 
     pointer.set(pointerTarget.x, pointerTarget.y);
     raycaster.setFromCamera(pointer, camera);
-    const hovering = subjectMesh ? raycaster.intersectObject(subjectMesh).length > 0 : false;
+    const hovering = isSubjectHit();
     canvas.classList.toggle('is-interactive', hovering);
-    hoverStrengthTarget = hovering && (restorationState === 'broken' || restorationState === 'restored') ? 1 : 0;
+    hoverStrengthTarget = hovering
+      ? restorationState === 'broken' ? 1 : restorationState === 'restored' ? 0.65 : 0
+      : 0;
   });
 
   canvas.addEventListener('pointerleave', () => {
@@ -622,7 +720,7 @@ async function init() {
   canvas.addEventListener('click', (event) => {
     pointer.set((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
-    if (subjectMesh && raycaster.intersectObject(subjectMesh).length > 0) toggleRestoration();
+    if (isSubjectHit()) toggleRestoration();
   });
 
   window.addEventListener('resize', () => {
@@ -637,6 +735,7 @@ async function init() {
 
   document.addEventListener('visibilitychange', () => {
     pageVisible = !document.hidden;
+    gsap.globalTimeline.paused(!pageVisible);
   });
 
   restoreButton.addEventListener('click', toggleRestoration);
@@ -650,6 +749,8 @@ async function init() {
 applySceneCopy();
 init().catch((error: unknown) => {
   console.error('场景初始化失败：', error);
+  const message = error instanceof Error ? error.message : '未知错误';
+  fallback.querySelector('p')!.textContent = `场景加载失败：${message} 请检查素材后刷新页面。`;
   fallback.hidden = false;
   loading.remove();
 });

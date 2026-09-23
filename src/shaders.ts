@@ -140,6 +140,51 @@ export function createRepairMaterial(
   });
 }
 
+export function createHoverOutlineMaterial(texture: THREE.Texture) {
+  const image = texture.image as { width: number; height: number };
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uMap: { value: texture },
+      uTexel: { value: new THREE.Vector2(1 / image.width, 1 / image.height) },
+      uStrength: { value: 0 },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uMap;
+      uniform vec2 uTexel;
+      uniform float uStrength;
+      varying vec2 vUv;
+
+      void main() {
+        if (uStrength < 0.001) discard;
+        float center = texture2D(uMap, vUv).a;
+        vec2 radius = uTexel * 7.0;
+        float neighbor = 0.0;
+        neighbor = max(neighbor, texture2D(uMap, vUv + vec2(radius.x, 0.0)).a);
+        neighbor = max(neighbor, texture2D(uMap, vUv - vec2(radius.x, 0.0)).a);
+        neighbor = max(neighbor, texture2D(uMap, vUv + vec2(0.0, radius.y)).a);
+        neighbor = max(neighbor, texture2D(uMap, vUv - vec2(0.0, radius.y)).a);
+        neighbor = max(neighbor, texture2D(uMap, vUv + radius).a);
+        neighbor = max(neighbor, texture2D(uMap, vUv - radius).a);
+        neighbor = max(neighbor, texture2D(uMap, vUv + vec2(radius.x, -radius.y)).a);
+        neighbor = max(neighbor, texture2D(uMap, vUv + vec2(-radius.x, radius.y)).a);
+        float ring = smoothstep(0.05, 0.45, neighbor) * (1.0 - smoothstep(0.02, 0.20, center));
+        gl_FragColor = vec4(vec3(0.72, 0.46, 0.23), ring * uStrength * 0.28);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    alphaTest: 0.005,
+    toneMapped: false,
+  });
+}
+
 export function createGroundMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
